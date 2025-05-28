@@ -131,28 +131,48 @@ public class ClientHandler implements Runnable {
 
     private Response handleGetReadingStatus(Request request) {
         try {
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) request.getData();
-            int userId = (Integer) data.get("userId");
-            int bookId = (Integer) data.get("bookId");
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
 
-            String status = dbManager.getStatus(currentUser.getUsername(), bookId);
+            if (username == null || bookId == null) {
+                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            }
+
+            String status = dbManager.getStatus(username, bookId);
             return new Response(ResponseType.SUCCESS, status);
+
         } catch (SQLException e) {
-            return new Response(ResponseType.ERROR, "Błąd bazy danych: " + e.getMessage());
+            System.err.println("Database error in handleGetReadingStatus: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetReadingStatus: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 
     private Response handleUpdateReadingStatus(Request request) {
         try {
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) request.getData();
-            int userId = (Integer) data.get("userId");
-            int bookId = (Integer) data.get("bookId");
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
             String status = (String) data.get("status");
 
-            dbManager.updateStatus(currentUser.getUsername(), bookId, status);
-            return new Response(ResponseType.SUCCESS, "Status zaktualizowany");
+            if (username == null || bookId == null || status == null) {
+                return new Response(ResponseType.ERROR, "Missing username, bookId, or status");
+            }
+
+            dbManager.updateStatus(username, bookId, status);
+            return new Response(ResponseType.SUCCESS, "Reading status updated successfully");
+
         } catch (SQLException e) {
-            return new Response(ResponseType.ERROR, "Błąd bazy danych: " + e.getMessage());
+            System.err.println("Database error in handleUpdateReadingStatus: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleUpdateReadingStatus: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 

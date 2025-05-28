@@ -36,6 +36,10 @@ public class SearchController {
     @FXML
     private ComboBox<String> statusComboBox;
 
+    private boolean isUpdating = false;
+
+
+
     private final String[] statuses = {"Want to read", "Currently reading", "Read"};
     private final String WANT_TO_READ = "Want to read";
 
@@ -47,139 +51,167 @@ public class SearchController {
         this.currentBookId = book.getBookId();
 
         titleLabel.setText(book.getTitle());
-        authorLabel.setText("by "+ book.getAuthor());
-        avgRatingLabel.setText(String.format("★%.1f", book.getAverageRating())+" avg rating");
-        ratingCountLabel.setText(String.valueOf(book.getRatingCount())+ " ratings");
-        publicationYearLabel.setText("published in "+ String.valueOf(book.getPublicationYear()));
+        authorLabel.setText("by " + book.getAuthor());
+        avgRatingLabel.setText(String.format("★%.1f", book.getAverageRating()) + " avg rating");
+        ratingCountLabel.setText(String.valueOf(book.getRatingCount()) + " ratings");
+        publicationYearLabel.setText("published in " + String.valueOf(book.getPublicationYear()));
 
+        // Set up book cover image
+        setupBookCover(book);
+
+        // Initialize ComboBox
+        initializeComboBox();
+
+        // Load current reading status
+        loadReadingStatus();
+    }
+
+    private void setupBookCover(Book book) {
         if (book.getCoverImagePath() != null && !book.getCoverImagePath().isEmpty()) {
-            Image image = new Image(getClass().getResourceAsStream("/img/" + book.getCoverImagePath()));
-            bookCover.setImage(image);
+            try {
+                Image image = new Image(getClass().getResourceAsStream("/img/" + book.getCoverImagePath()));
+                bookCover.setImage(image);
 
+                double fitWidth = 150;
+                double fitHeight = 200;
+                bookCover.setFitWidth(fitWidth);
+                bookCover.setFitHeight(fitHeight);
+                bookCover.setPreserveRatio(true);
+                bookCover.setSmooth(true);
 
-            double fitWidth = 150;
-            double fitHeight = 200;
-            bookCover.setFitWidth(fitWidth);
-            bookCover.setFitHeight(fitHeight);
-            bookCover.setPreserveRatio(true);
-            bookCover.setSmooth(true);
+                // Adjust image viewport
+                double imageWidth = image.getWidth();
+                double imageHeight = image.getHeight();
 
-            //Dopasowanie wymiarow okladki
-            double imageWidth = image.getWidth();
-            double imageHeight = image.getHeight();
+                double scaleX = imageWidth / fitWidth;
+                double scaleY = imageHeight / fitHeight;
+                double scale = Math.min(scaleX, scaleY);
 
-            double scaleX = imageWidth / fitWidth;
-            double scaleY = imageHeight / fitHeight;
+                double viewportWidth = fitWidth * scale;
+                double viewportHeight = fitHeight * scale;
+                double viewportX = (imageWidth - viewportWidth) / 2;
+                double viewportY = (imageHeight - viewportHeight) / 2;
 
-
-            double scale = Math.min(scaleX, scaleY);
-
-            double viewportWidth = fitWidth * scale;
-            double viewportHeight = fitHeight * scale;
-
-
-            double viewportX = (imageWidth - viewportWidth) / 2;
-            double viewportY = (imageHeight - viewportHeight) / 2;
-
-            // Ustaw viewport
-            bookCover.setViewport(new Rectangle2D(viewportX, viewportY, viewportWidth, viewportHeight));
+                bookCover.setViewport(new Rectangle2D(viewportX, viewportY, viewportWidth, viewportHeight));
+            } catch (Exception e) {
+                System.err.println("Error loading book cover: " + e.getMessage());
+            }
         }
-
-        //COMBOBOX
-        statusComboBox.getItems().setAll(statuses);
-
-        loadReadingStatus(currentUsername,currentBookId);
-
     }
 
-    private void setComboBoxCellFactory(boolean firstOptionGreen) {
-        statusComboBox.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    if (firstOptionGreen && item.equals(WANT_TO_READ)) {
-                        setStyle("-fx-background-color: #658C4C;");
-                    } else {
-                        setStyle("-fx-background-color: #d3d3d3;");
-                    }
-                }
-            }
-        });
+    private void initializeComboBox() {
+        statusComboBox.getItems().clear();
+        statusComboBox.getItems().addAll(statuses);
 
-        // Ustawienie wyglądu zaznaczonej (wyświetlanej) wartości w ComboBox
-        statusComboBox.setButtonCell(new javafx.scene.control.ListCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    if (firstOptionGreen && item.equals(WANT_TO_READ)) {
-                        setStyle("-fx-background-color: #658C4C;");
-                    } else {
-                        setStyle("-fx-background-color: #d3d3d3;");
-                    }
+        // Set up the action handler
+        statusComboBox.setOnAction(e -> {
+            if (!isUpdating) {
+                String selectedStatus = statusComboBox.getSelectionModel().getSelectedItem();
+                if (selectedStatus != null) {
+                    updateReadingStatus(selectedStatus);
                 }
             }
         });
     }
 
-    public void loadReadingStatus(String username, int bookId) {
+    private void loadReadingStatus() {
         try {
             Map<String, Object> data = new HashMap<>();
-            data.put("username", username);
-            data.put("bookId", bookId);
+            data.put("username", currentUsername);
+            data.put("bookId", currentBookId);
 
             Request request = new Request(RequestType.GET_READING_STATUS, data);
             Response response = client.sendRequest(request);
 
-            statusComboBox.getItems().setAll(statuses);
+            isUpdating = true; // Prevent triggering the action handler
 
             if (response.getType() == ResponseType.SUCCESS) {
                 String status = (String) response.getData();
-                if (status == null) {
+                if (status == null || status.trim().isEmpty()) {
+                    // No status found, default to "Want to read"
                     statusComboBox.getSelectionModel().select(WANT_TO_READ);
-                    setComboBoxCellFactory(true);
+                    setComboBoxStyle(true); // Green style for new status
                 } else {
                     statusComboBox.getSelectionModel().select(status);
-                    setComboBoxCellFactory(false);
+                    setComboBoxStyle(false); // Normal style for existing status
                 }
             } else {
-                System.err.println("Błąd pobierania statusu: " + response.getData());
+                System.err.println("Error loading reading status: " + response.getData());
                 statusComboBox.getSelectionModel().select(WANT_TO_READ);
-                setComboBoxCellFactory(true);
+                setComboBoxStyle(true);
             }
 
-            statusComboBox.setOnAction(e -> {
-                String selectedStatus = statusComboBox.getSelectionModel().getSelectedItem();
-                try {
-                    Map<String, Object> updateData = new HashMap<>();
-                    updateData.put("username", username);
-                    updateData.put("bookId", bookId);
-                    updateData.put("status", selectedStatus);
+        } catch (Exception e) {
+            System.err.println("Exception loading reading status: " + e.getMessage());
+            e.printStackTrace();
+            statusComboBox.getSelectionModel().select(WANT_TO_READ);
+            setComboBoxStyle(true);
+        } finally {
+            isUpdating = false;
+        }
+    }
 
-                    Request updateRequest = new Request(RequestType.UPDATE_READING_STATUS, updateData);
-                    Response updateResponse = client.sendRequest(updateRequest);
+    private void updateReadingStatus(String selectedStatus) {
+        try {
+            Map<String, Object> data = new HashMap<>();
+            data.put("username", currentUsername);
+            data.put("bookId", currentBookId);
+            data.put("status", selectedStatus);
 
-                    if (updateResponse.getType() == ResponseType.SUCCESS) {
-                        setComboBoxCellFactory(false);
-                    } else {
-                        System.err.println("Błąd aktualizacji statusu: " + updateResponse.getData());
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            });
+            Request request = new Request(RequestType.UPDATE_READING_STATUS, data);
+            Response response = client.sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                System.out.println("Reading status updated successfully to: " + selectedStatus);
+                setComboBoxStyle(false); // Change to normal style after successful update
+            } else {
+                System.err.println("Error updating reading status: " + response.getData());
+                // Optionally revert to previous selection or show error message
+            }
 
         } catch (Exception e) {
+            System.err.println("Exception updating reading status: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private void setComboBoxStyle(boolean isNewStatus) {
+        // Set cell factory for dropdown items
+        statusComboBox.setCellFactory(lv -> new javafx.scene.control.ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (isNewStatus && item.equals(WANT_TO_READ)) {
+                        setStyle("-fx-background-color: #658C4C; -fx-text-fill: white;");
+                    } else {
+                        setStyle("-fx-background-color: #d3d3d3; -fx-text-fill: black;");
+                    }
+                }
+            }
+        });
+
+        // Set button cell for the displayed value
+        statusComboBox.setButtonCell(new javafx.scene.control.ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (isNewStatus && item.equals(WANT_TO_READ)) {
+                        setStyle("-fx-background-color: #658C4C; -fx-text-fill: white;");
+                    } else {
+                        setStyle("-fx-background-color: #d3d3d3; -fx-text-fill: black;");
+                    }
+                }
+            }
+        });
     }
 }

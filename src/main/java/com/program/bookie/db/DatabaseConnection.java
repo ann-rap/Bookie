@@ -2,13 +2,12 @@ package com.program.bookie.db;
 
 import com.program.bookie.models.User;
 import com.program.bookie.models.*;
-import com.program.bookie.models.ResponseType.*;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.program.bookie.models.ResponseType.*;
 
 public class DatabaseConnection {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/login";
@@ -203,21 +202,17 @@ public class DatabaseConnection {
         return results;
     }
 
-    /*
-    status uzytkownika w czytaniu ksiazki
-     */
     public String getStatus(String username, int bookId) throws SQLException {
-        // Validate input parameters
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username cannot be null or empty");
         }
 
         String sql = """
-        SELECT bu.reading_status
-        FROM book_user bu
-        WHERE bu.user_id = (SELECT user_id FROM user WHERE username = ?) 
-        AND bu.book_id = ?
-        """;
+    SELECT bu.reading_status
+    FROM user_books bu
+    INNER JOIN user_account ua ON bu.user_id = ua.account_id
+    WHERE ua.username = ? AND bu.book_id = ?
+    """;
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, username.trim());
@@ -234,22 +229,10 @@ public class DatabaseConnection {
         }
     }
 
-    private String convertToDisplayValue(String enumValue) {
-        if (enumValue == null) return null;
-        switch (enumValue) {
-            case "TO_READ":
-                return "Do przeczytania";
-            case "READING":
-                return "Czytam";
-            case "READ":
-                return "Przeczytane";
-            default:
-                return enumValue; // fallback
-        }
-    }
-    /*Aktualizacja*/
+    /*
+    Update or insert reading status with current date
+    */
     public void updateStatus(String username, int bookId, String newStatus) throws SQLException {
-
         if (newStatus == null || newStatus.trim().isEmpty()) {
             throw new IllegalArgumentException("Status cannot be null or empty");
         }
@@ -257,22 +240,28 @@ public class DatabaseConnection {
         // Convert display value to enum value
         String enumStatus = convertToEnumValue(newStatus);
 
+        // Get current date
+        LocalDate currentDate = LocalDate.now();
+
         String sqlCheck = """
-        SELECT 1 FROM book_user bu
-        WHERE bu.user_id = (SELECT user_id FROM user WHERE username = ?) 
-        AND bu.book_id = ?
-        """;
+    SELECT 1 FROM user_books bu
+    INNER JOIN user_account ua ON bu.user_id = ua.account_id
+    WHERE ua.username = ? AND bu.book_id = ?
+    """;
 
         String sqlUpdate = """
-        UPDATE book_user SET reading_status = ?
-        WHERE user_id = (SELECT user_id FROM user WHERE username = ?) 
-        AND book_id = ?
-        """;
+    UPDATE user_books bu
+    INNER JOIN user_account ua ON bu.user_id = ua.account_id
+    SET bu.reading_status = ?, bu.date_added = ?
+    WHERE ua.username = ? AND bu.book_id = ?
+    """;
 
         String sqlInsert = """
-        INSERT INTO book_user (user_id, book_id, reading_status)
-        VALUES ((SELECT user_id FROM user WHERE username = ?), ?, ?)
-        """;
+    INSERT INTO user_books (user_id, book_id, reading_status, date_added)
+    SELECT ua.account_id, ?, ?, ?
+    FROM user_account ua
+    WHERE ua.username = ?
+    """;
 
         try (PreparedStatement checkStmt = connection.prepareStatement(sqlCheck)) {
             checkStmt.setString(1, username.trim());
@@ -283,24 +272,50 @@ public class DatabaseConnection {
                     // Record exists - update
                     try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
                         updateStmt.setString(1, enumStatus);
-                        updateStmt.setString(2, username.trim());
-                        updateStmt.setInt(3, bookId);
-                        updateStmt.executeUpdate();
+                        updateStmt.setDate(2, java.sql.Date.valueOf(currentDate));
+                        updateStmt.setString(3, username.trim());
+                        updateStmt.setInt(4, bookId);
+                        int rowsUpdated = updateStmt.executeUpdate();
+                        if (rowsUpdated == 0) {
+                            throw new SQLException("Failed to update reading status");
+                        }
                     }
                 } else {
                     // Record doesn't exist - insert
                     try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
-                        insertStmt.setString(1, username.trim());
-                        insertStmt.setInt(2, bookId);
-                        insertStmt.setString(3, enumStatus);
-                        insertStmt.executeUpdate();
+                        insertStmt.setInt(1, bookId);
+                        insertStmt.setString(2, enumStatus);
+                        insertStmt.setDate(3, java.sql.Date.valueOf(currentDate));
+                        insertStmt.setString(4, username.trim());
+                        int rowsInserted = insertStmt.executeUpdate();
+                        if (rowsInserted == 0) {
+                            throw new SQLException("Failed to insert reading status");
+                        }
                     }
                 }
             }
         }
     }
 
+
+
+
+    private String convertToDisplayValue(String enumValue) {
+        if (enumValue == null) return null;
+        switch (enumValue) {
+            case "TO_READ":
+                return "Want to read";
+            case "READING":
+                return "Currently reading";
+            case "READ":
+                return "Read";
+            default:
+                return enumValue; // fallback
+        }
+    }
+
     private String convertToEnumValue(String displayValue) {
+        if (displayValue == null) return null;
         switch (displayValue) {
             case "Want to read":
                 return "TO_READ";
@@ -309,10 +324,9 @@ public class DatabaseConnection {
             case "Read":
                 return "READ";
             default:
-                throw new IllegalArgumentException("Nieznany status: " + displayValue);
+                throw new IllegalArgumentException("Unknown status: " + displayValue);
         }
     }
-
 
     //Zamykanie polaczenia
     public void closeConnection() {
