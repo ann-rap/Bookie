@@ -2,6 +2,7 @@
 
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.effect.Blend?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
@@ -43,7 +44,10 @@
 
       <!-- User Rating ComboBox -->
       <HBox alignment="CENTER_LEFT" spacing="10">
-         <ComboBox fx:id="statusComboBox" prefWidth="120" promptText="Want to read" />
+         <ComboBox fx:id="statusComboBox" prefHeight="38.0" prefWidth="138.0" promptText="Want to read" style="-fx-font-size: 14; -fx-font-weight: bold;">
+            <effect>
+               <Blend />
+            </effect></ComboBox>
          <Label style="-fx-font-size: 13;" text="Your rating:" />
       </HBox>
 

@@ -207,67 +207,109 @@ public class DatabaseConnection {
     status uzytkownika w czytaniu ksiazki
      */
     public String getStatus(String username, int bookId) throws SQLException {
+        // Validate input parameters
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
         String sql = """
-        SELECT b.reading_status
-        FROM books b
-        JOIN users u ON b.user_id = u.id
-        WHERE u.username = ? AND b.book_id = ?
-    """;
+        SELECT bu.reading_status
+        FROM book_user bu
+        WHERE bu.user_id = (SELECT user_id FROM user WHERE username = ?) 
+        AND bu.book_id = ?
+        """;
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, username);
+            stmt.setString(1, username.trim());
             stmt.setInt(2, bookId);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getString("reading_status");
+                    String enumValue = rs.getString("reading_status");
+                    return convertToDisplayValue(enumValue);
                 } else {
-                    return null;
+                    return null; // No record found for this user-book combination
                 }
             }
+        }
+    }
+
+    private String convertToDisplayValue(String enumValue) {
+        if (enumValue == null) return null;
+        switch (enumValue) {
+            case "TO_READ":
+                return "Do przeczytania";
+            case "READING":
+                return "Czytam";
+            case "READ":
+                return "Przeczytane";
+            default:
+                return enumValue; // fallback
         }
     }
     /*Aktualizacja*/
     public void updateStatus(String username, int bookId, String newStatus) throws SQLException {
 
+        if (newStatus == null || newStatus.trim().isEmpty()) {
+            throw new IllegalArgumentException("Status cannot be null or empty");
+        }
+
+        // Convert display value to enum value
+        String enumStatus = convertToEnumValue(newStatus);
+
         String sqlCheck = """
-        SELECT 1 FROM books b
-        JOIN users u ON b.user_id = u.id
-        WHERE u.username = ? AND b.book_id = ?
-    """;
+        SELECT 1 FROM book_user bu
+        WHERE bu.user_id = (SELECT user_id FROM user WHERE username = ?) 
+        AND bu.book_id = ?
+        """;
 
         String sqlUpdate = """
-        UPDATE books SET reading_status = ?
-        WHERE user_id = (SELECT id FROM users WHERE username = ?) AND book_id = ?
-    """;
+        UPDATE book_user SET reading_status = ?
+        WHERE user_id = (SELECT user_id FROM user WHERE username = ?) 
+        AND book_id = ?
+        """;
 
         String sqlInsert = """
-        INSERT INTO books (user_id, book_id, reading_status)
-        VALUES ((SELECT id FROM users WHERE username = ?), ?, ?)
-    """;
+        INSERT INTO book_user (user_id, book_id, reading_status)
+        VALUES ((SELECT user_id FROM user WHERE username = ?), ?, ?)
+        """;
 
         try (PreparedStatement checkStmt = connection.prepareStatement(sqlCheck)) {
-            checkStmt.setString(1, username);
+            checkStmt.setString(1, username.trim());
             checkStmt.setInt(2, bookId);
+
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next()) {
-                    // Rekord istnieje - update
+                    // Record exists - update
                     try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
-                        updateStmt.setString(1, newStatus);
-                        updateStmt.setString(2, username);
+                        updateStmt.setString(1, enumStatus);
+                        updateStmt.setString(2, username.trim());
                         updateStmt.setInt(3, bookId);
                         updateStmt.executeUpdate();
                     }
                 } else {
-                    // Rekord nie istnieje - insert
+                    // Record doesn't exist - insert
                     try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
-                        insertStmt.setString(1, username);
+                        insertStmt.setString(1, username.trim());
                         insertStmt.setInt(2, bookId);
-                        insertStmt.setString(3, newStatus);
+                        insertStmt.setString(3, enumStatus);
                         insertStmt.executeUpdate();
                     }
                 }
             }
+        }
+    }
+
+    private String convertToEnumValue(String displayValue) {
+        switch (displayValue) {
+            case "Want to read":
+                return "TO_READ";
+            case "Currently reading":
+                return "READING";
+            case "Read":
+                return "READ";
+            default:
+                throw new IllegalArgumentException("Nieznany status: " + displayValue);
         }
     }
 
