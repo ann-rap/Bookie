@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -17,10 +18,13 @@ public class ClientHandler implements Runnable {
     private ObjectOutputStream output;
     private DatabaseConnection dbManager;
     private User currentUser;
+    private String clientAddress;
 
     public ClientHandler(Socket socket, DatabaseConnection dbManager) {
         this.clientSocket = socket;
         this.dbManager = dbManager;
+        this.clientAddress = socket.getRemoteSocketAddress().toString();
+        System.out.println("New client connected: " + clientAddress);
     }
 
     @Override
@@ -29,20 +33,41 @@ public class ClientHandler implements Runnable {
             output = new ObjectOutputStream(clientSocket.getOutputStream());
             input = new ObjectInputStream(clientSocket.getInputStream());
 
-            // Główna pętla obsługi żądań
             while (!clientSocket.isClosed()) {
-                Request request = (Request) input.readObject();
-                Response response = handleRequest(request);
-                output.writeObject(response);
-                output.flush();
-            }
-        } catch (Exception e) {
-            System.err.println("Błąd obsługi klienta: " + e.getMessage());
-        } finally {
+                try {
+                    Request request = (Request) input.readObject();
 
+                    // Check for disconnect request
+                    if (request.getType() == RequestType.DISCONNECT) {
+                        System.out.println("Client " + clientAddress + " requested disconnect");
+                        break;
+                    }
+
+                    Response response = handleRequest(request);
+                    output.writeObject(response);
+                    output.flush();
+                } catch (SocketException e) {
+                    // Client disconnected unexpectedly
+                    System.out.println("Client " + clientAddress + " disconnected unexpectedly");
+                    break;
+                } catch (IOException e) {
+                    if (e.getMessage() != null && e.getMessage().contains("Connection reset")) {
+                        System.out.println("Client " + clientAddress + " connection reset");
+                    } else {
+                        System.out.println("Client " + clientAddress + " disconnected: " + e.getMessage());
+                    }
+                    break;
+                } catch (ClassNotFoundException e) {
+                    System.err.println("Error reading request from " + clientAddress + ": " + e.getMessage());
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error initializing connection with " + clientAddress + ": " + e.getMessage());
+        } finally {
+            System.out.println("Closing connection for client: " + clientAddress);
             closeConnection();
-        }
-    }
+        }}
 
     private Response handleRequest(Request request) {
         switch (request.getType()) {

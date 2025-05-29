@@ -65,11 +65,19 @@ public class MainController implements Initializable {
         setHover(homeButton);
         setHover(statisticsButton);
         setHover(shelfButton);
+
+        /// shutdownHook
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (client != null) {
+                client.disconnect();
+            }
+        }));
     }
 
     //MENU
     public void closeButtonOnAction(ActionEvent actionEvent) {
         if (client != null) {
+            System.out.println("Disconnecting client...");
             client.disconnect();
         }
         Stage stage = (Stage) closeButton.getScene().getWindow();

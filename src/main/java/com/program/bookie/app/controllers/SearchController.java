@@ -10,6 +10,7 @@ import javafx.scene.image.ImageView;
 import com.program.bookie.models.ResponseType.*;
 import com.program.bookie.client.Client;
 import com.program.bookie.models.ResponseType.*;
+import javafx.scene.layout.HBox;
 
 
 import java.util.HashMap;
@@ -36,6 +37,9 @@ public class SearchController {
     @FXML
     private ComboBox<String> statusComboBox;
 
+    @FXML
+    private HBox mainPane;
+
     private boolean isUpdating = false;
 
 
@@ -56,15 +60,58 @@ public class SearchController {
         ratingCountLabel.setText(String.valueOf(book.getRatingCount()) + " ratings");
         publicationYearLabel.setText("published in " + String.valueOf(book.getPublicationYear()));
 
-        // Set up book cover image
+
         setupBookCover(book);
 
-        // Initialize ComboBox
         initializeComboBox();
 
-        // Load current reading status
         loadReadingStatus();
+
+        setupClickablePanel();
     }
+
+    private void setupClickablePanel() {
+        if (mainPane != null) {
+            // Add hover effects to the entire container
+            mainPane.setStyle(mainPane.getStyle() + "; -fx-cursor: hand;");
+
+            mainPane.setOnMouseEntered(e -> {
+                mainPane.setStyle("-fx-background-color: #f0f0f0; -fx-padding: 15; -fx-cursor: hand;");
+            });
+
+            mainPane.setOnMouseExited(e -> {
+                mainPane.setStyle("-fx-background-color: #f5f5f5; -fx-padding: 15; -fx-cursor: hand;");
+            });
+
+            mainPane.setOnMouseClicked(e -> {
+                // Check if click was on ComboBox - if so, don't open details
+                if (e.getTarget() == statusComboBox ||
+                        statusComboBox.isShowing() ||
+                        isClickOnComboBox(e.getTarget())) {
+                    return; // Don't open details if clicking on ComboBox
+                }
+
+                System.out.println("Kliknieto");
+            });
+        }
+    }
+    private boolean isClickOnComboBox(Object target) {
+        // Check if the click target is part of the ComboBox
+        if (target instanceof javafx.scene.Node) {
+            javafx.scene.Node node = (javafx.scene.Node) target;
+            javafx.scene.Node parent = node.getParent();
+
+            // Check if any parent is the ComboBox
+            while (parent != null) {
+                if (parent == statusComboBox) {
+                    return true;
+                }
+                parent = parent.getParent();
+            }
+        }
+        return false;
+    }
+
 
     private void setupBookCover(Book book) {
         if (book.getCoverImagePath() != null && !book.getCoverImagePath().isEmpty()) {
@@ -214,4 +261,6 @@ public class SearchController {
             }
         });
     }
+
+
 }

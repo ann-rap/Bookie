@@ -57,6 +57,7 @@ public class LoginController implements Initializable {
 
     public void cancelButtonOnAction(ActionEvent event) {
         if (client != null) {
+            System.out.println("Disconnecting client...");
             client.disconnect();
         }
         Stage stage = (Stage) cancelButton.getScene().getWindow();
@@ -103,6 +104,12 @@ public class LoginController implements Initializable {
             registerStage.setScene(new Scene(root, 1000, 600));
             registerStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
 
+            registerStage.setOnCloseRequest(event -> {
+                if (client != null) {
+                    client.disconnect();
+                }
+            });
+
             Stage currentStage = (Stage) registerButton.getScene().getWindow();
             currentStage.close();
             registerStage.show();
@@ -124,6 +131,12 @@ public class LoginController implements Initializable {
             registerStage.initStyle(StageStyle.UNDECORATED);
             registerStage.setScene(new Scene(root, 520, 476));
             registerStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
+
+            registerStage.setOnCloseRequest(event -> {
+                if (client != null) {
+                    client.disconnect();
+                }
+            });
 
             Stage currentStage = (Stage) registerButton.getScene().getWindow();
             currentStage.close();

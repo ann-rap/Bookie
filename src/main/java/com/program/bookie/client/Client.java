@@ -14,6 +14,9 @@ public class Client {
     private ObjectInputStream input;
     private final String SERVER_HOST = "localhost";
     private final int SERVER_PORT = 999;
+    private boolean connected = false;
+
+
 
 
     public static synchronized Client getInstance() {
@@ -48,11 +51,32 @@ public class Client {
 
     public void disconnect() {
         try {
-            if (socket != null && !socket.isClosed()) {
+            if (connected && socket != null && !socket.isClosed()) {
+                // Send disconnect request to server
+                try {
+                    Request disconnectRequest = new Request(RequestType.DISCONNECT, null);
+                    output.writeObject(disconnectRequest);
+                    output.flush();
+
+                    // Give the server a moment to process the disconnect
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    // Ignore errors when sending disconnect request
+                    System.out.println("Error sending disconnect request: " + e.getMessage());
+                }
+
+                // Close connections
+                if (output != null) output.close();
+                if (input != null) input.close();
                 socket.close();
             }
         } catch (IOException e) {
             System.err.println("Błąd rozłączania: " + e.getMessage());
+        } finally {
+            connected = false;
+            socket = null;
+            output = null;
+            input = null;
         }
     }
 }
