@@ -37,7 +37,7 @@ public class ClientHandler implements Runnable {
                 try {
                     Request request = (Request) input.readObject();
 
-                    // Check for disconnect request
+
                     if (request.getType() == RequestType.DISCONNECT) {
                         System.out.println("Client " + clientAddress + " requested disconnect");
                         break;
@@ -47,7 +47,6 @@ public class ClientHandler implements Runnable {
                     output.writeObject(response);
                     output.flush();
                 } catch (SocketException e) {
-                    // Client disconnected unexpectedly
                     System.out.println("Client " + clientAddress + " disconnected unexpectedly");
                     break;
                 } catch (IOException e) {
@@ -83,6 +82,8 @@ public class ClientHandler implements Runnable {
                 return handleGetReadingStatus(request);
             case UPDATE_READING_STATUS:
                 return handleUpdateReadingStatus(request);
+            case GET_USER_RATING:
+                return handleGetUserRating(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -197,6 +198,29 @@ public class ClientHandler implements Runnable {
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         } catch (Exception e) {
             System.err.println("Error in handleUpdateReadingStatus: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetUserRating(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
+
+            if (username == null || bookId == null) {
+                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            }
+
+            Integer rating = dbManager.getUserRating(username, bookId);
+            return new Response(ResponseType.SUCCESS, rating);
+
+        } catch (SQLException e) {
+            System.err.println("Blad bazy danych handleGetUserRating: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Blad bazy danych: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Wyjatek podczas handleGetUserRating: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }

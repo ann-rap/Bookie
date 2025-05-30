@@ -223,24 +223,26 @@ public class DatabaseConnection {
                     String enumValue = rs.getString("reading_status");
                     return convertToDisplayValue(enumValue);
                 } else {
-                    return null; // No record found for this user-book combination
+                    return null;
                 }
             }
         }
     }
 
+
+
     /*
-    Update or insert reading status with current date
+    Zaktualizuj lub wstaw status
     */
     public void updateStatus(String username, int bookId, String newStatus) throws SQLException {
         if (newStatus == null || newStatus.trim().isEmpty()) {
             throw new IllegalArgumentException("Status cannot be null or empty");
         }
 
-        // Convert display value to enum value
+
         String enumStatus = convertToEnumValue(newStatus);
 
-        // Get current date
+
         LocalDate currentDate = LocalDate.now();
 
         String sqlCheck = """
@@ -269,7 +271,6 @@ public class DatabaseConnection {
 
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next()) {
-                    // Record exists - update
                     try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
                         updateStmt.setString(1, enumStatus);
                         updateStmt.setDate(2, java.sql.Date.valueOf(currentDate));
@@ -281,7 +282,7 @@ public class DatabaseConnection {
                         }
                     }
                 } else {
-                    // Record doesn't exist - insert
+
                     try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
                         insertStmt.setInt(1, bookId);
                         insertStmt.setString(2, enumStatus);
@@ -296,8 +297,6 @@ public class DatabaseConnection {
             }
         }
     }
-
-
 
 
     private String convertToDisplayValue(String enumValue) {
@@ -327,6 +326,33 @@ public class DatabaseConnection {
                 throw new IllegalArgumentException("Unknown status: " + displayValue);
         }
     }
+
+    public Integer getUserRating(String username, int bookId) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        String sql = """
+    SELECT r.rating
+    FROM reviews r
+    INNER JOIN user_account ua ON r.user_id = ua.account_id
+    WHERE ua.username = ? AND r.book_id = ?
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username.trim());
+            stmt.setInt(2, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("rating");
+                } else {
+                    return null;
+                }
+            }
+        }
+    }
+
 
     //Zamykanie polaczenia
     public void closeConnection() {

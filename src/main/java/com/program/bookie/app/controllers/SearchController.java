@@ -15,6 +15,7 @@ import javafx.scene.layout.HBox;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 
 public class SearchController {
@@ -22,7 +23,7 @@ public class SearchController {
     private Client client = Client.getInstance();
 
     @FXML
-    private ImageView bookCover;
+    private ImageView bookCover,star1,star2,star3,star4,star5;
     @FXML
     private Label titleLabel;
     @FXML
@@ -57,13 +58,15 @@ public class SearchController {
         titleLabel.setText(book.getTitle());
         authorLabel.setText("by " + book.getAuthor());
         avgRatingLabel.setText(String.format("★%.1f", book.getAverageRating()) + " avg rating");
-        ratingCountLabel.setText(String.valueOf(book.getRatingCount()) + " ratings");
-        publicationYearLabel.setText("published in " + String.valueOf(book.getPublicationYear()));
+        ratingCountLabel.setText(book.getRatingCount() + " ratings");
+        publicationYearLabel.setText("published in " + book.getPublicationYear());
 
 
         setupBookCover(book);
 
         initializeComboBox();
+
+        loadUserRating();
 
         loadReadingStatus();
 
@@ -72,7 +75,7 @@ public class SearchController {
 
     private void setupClickablePanel() {
         if (mainPane != null) {
-            // Add hover effects to the entire container
+
             mainPane.setStyle(mainPane.getStyle() + "; -fx-cursor: hand;");
 
             mainPane.setOnMouseEntered(e -> {
@@ -84,11 +87,11 @@ public class SearchController {
             });
 
             mainPane.setOnMouseClicked(e -> {
-                // Check if click was on ComboBox - if so, don't open details
+
                 if (e.getTarget() == statusComboBox ||
                         statusComboBox.isShowing() ||
                         isClickOnComboBox(e.getTarget())) {
-                    return; // Don't open details if clicking on ComboBox
+                    return;
                 }
 
                 System.out.println("Kliknieto");
@@ -101,7 +104,7 @@ public class SearchController {
             javafx.scene.Node node = (javafx.scene.Node) target;
             javafx.scene.Node parent = node.getParent();
 
-            // Check if any parent is the ComboBox
+
             while (parent != null) {
                 if (parent == statusComboBox) {
                     return true;
@@ -116,7 +119,7 @@ public class SearchController {
     private void setupBookCover(Book book) {
         if (book.getCoverImagePath() != null && !book.getCoverImagePath().isEmpty()) {
             try {
-                Image image = new Image(getClass().getResourceAsStream("/img/" + book.getCoverImagePath()));
+                Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/" + book.getCoverImagePath())));
                 bookCover.setImage(image);
 
                 double fitWidth = 150;
@@ -126,7 +129,7 @@ public class SearchController {
                 bookCover.setPreserveRatio(true);
                 bookCover.setSmooth(true);
 
-                // Adjust image viewport
+
                 double imageWidth = image.getWidth();
                 double imageHeight = image.getHeight();
 
@@ -150,7 +153,7 @@ public class SearchController {
         statusComboBox.getItems().clear();
         statusComboBox.getItems().addAll(statuses);
 
-        // Set up the action handler
+
         statusComboBox.setOnAction(e -> {
             if (!isUpdating) {
                 String selectedStatus = statusComboBox.getSelectionModel().getSelectedItem();
@@ -159,6 +162,51 @@ public class SearchController {
                 }
             }
         });
+    }
+
+    private void loadUserRating() {
+        try {
+            Map<String, Object> data = new HashMap<>();
+            data.put("username", currentUsername);
+            data.put("bookId", currentBookId);
+
+            Request request = new Request(RequestType.GET_USER_RATING, data);
+            Response response = client.sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                Integer rating = (Integer) response.getData();
+                displayUserRating(rating != null ? rating : 0);
+            } else {
+                displayUserRating(0);
+            }
+
+        } catch (Exception e) {
+            System.err.println("Exception loading user rating: " + e.getMessage());
+            displayUserRating(0);
+        }
+    }
+
+    // Funkcja do wyświetlania gwiazdek na podstawie oceny
+    private void displayUserRating(int rating) {
+
+        ImageView[] stars = {star1, star2, star3, star4, star5};
+
+        for (int i = 0; i < stars.length; i++) {
+            if (stars[i] != null) {
+                boolean filled = i < rating;
+                setStarImage(stars[i], filled);
+            }
+        }
+    }
+
+    private void setStarImage(ImageView star, boolean filled) {
+        try {
+            String imagePath = filled ? "/img/star.png" : "/img/star2.png";
+            Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream(imagePath)));
+            star.setImage(image);
+        } catch (Exception e) {
+            System.err.println("Error loading star image: " + e.getMessage());
+        }
     }
 
     private void loadReadingStatus() {
@@ -170,17 +218,17 @@ public class SearchController {
             Request request = new Request(RequestType.GET_READING_STATUS, data);
             Response response = client.sendRequest(request);
 
-            isUpdating = true; // Prevent triggering the action handler
+            isUpdating = true;
 
             if (response.getType() == ResponseType.SUCCESS) {
                 String status = (String) response.getData();
                 if (status == null || status.trim().isEmpty()) {
-                    // No status found, default to "Want to read"
+
                     statusComboBox.getSelectionModel().select(WANT_TO_READ);
-                    setComboBoxStyle(true); // Green style for new status
+                    setComboBoxStyle(true);
                 } else {
                     statusComboBox.getSelectionModel().select(status);
-                    setComboBoxStyle(false); // Normal style for existing status
+                    setComboBoxStyle(false);
                 }
             } else {
                 System.err.println("Error loading reading status: " + response.getData());
@@ -210,10 +258,10 @@ public class SearchController {
 
             if (response.getType() == ResponseType.SUCCESS) {
                 System.out.println("Reading status updated successfully to: " + selectedStatus);
-                setComboBoxStyle(false); // Change to normal style after successful update
+                setComboBoxStyle(false);
             } else {
                 System.err.println("Error updating reading status: " + response.getData());
-                // Optionally revert to previous selection or show error message
+
             }
 
         } catch (Exception e) {
@@ -223,7 +271,6 @@ public class SearchController {
     }
 
     private void setComboBoxStyle(boolean isNewStatus) {
-        // Set cell factory for dropdown items
         statusComboBox.setCellFactory(lv -> new javafx.scene.control.ListCell<String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -242,7 +289,7 @@ public class SearchController {
             }
         });
 
-        // Set button cell for the displayed value
+
         statusComboBox.setButtonCell(new javafx.scene.control.ListCell<String>() {
             @Override
             protected void updateItem(String item, boolean empty) {

@@ -8,6 +8,7 @@ public enum RequestType {
     SEARCH_BOOK,
     GET_READING_STATUS,
     UPDATE_READING_STATUS,
+    GET_USER_RATING,
     DISCONNECT
 
 };
