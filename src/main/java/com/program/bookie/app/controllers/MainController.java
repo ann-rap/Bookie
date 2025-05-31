@@ -2,8 +2,6 @@ package com.program.bookie.app.controllers;
 
 import com.program.bookie.client.Client;
 import com.program.bookie.models.*;
-import com.program.bookie.models.RequestType.*;
-import com.program.bookie.models.ResponseType.*;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -44,7 +42,10 @@ public class MainController implements Initializable {
     private VBox searchBox;
 
     @FXML
-    private Pane homePane, searchPane;
+    private Pane homePane, searchPane, bookDetailsPane;
+
+    @FXML
+    private Label detailsTitle, detailsAuthor, detailsRatings,detailsReviews,detailsDescription, detailsAvgRating;
 
     @FXML
     private TextField searchField;

@@ -103,7 +103,7 @@
                   <HBox fx:id="booksContainer" layoutX="25.0" layoutY="126.0" prefHeight="308.0" prefWidth="950.0" style="-fx-background-radius: 20; -fx-background-color: #DEDEDE;" />
                </children>
             </Pane>
-            <Pane fx:id="bookPane" prefHeight="200.0" prefWidth="200.0" style="-fx-background-color: #e9e9e9;">
+            <Pane fx:id="bookDetailsPane" prefHeight="200.0" prefWidth="200.0" style="-fx-background-color: #e9e9e9;">
                <children>
                   <ScrollPane layoutY="6.0" prefHeight="484.0" prefWidth="1000.0">
                     <content>
@@ -117,32 +117,102 @@
                               <Label layoutX="292.0" layoutY="54.0" />
                               <VBox layoutX="250.0" layoutY="26.0" prefHeight="398.0" prefWidth="610.0">
                                  <children>
-                                    <Label prefHeight="54.0" prefWidth="610.0" text="The title">
+                                    <Label fx:id="detailsTitle" prefHeight="54.0" prefWidth="610.0" text="The title">
                                        <font>
                                           <Font size="36.0" />
                                        </font>
                                     </Label>
-                                    <Label text="by Author">
+                                    <Label fx:id="detailsAuthor" text="by Author">
                                        <font>
                                           <Font size="24.0" />
                                        </font>
                                     </Label>
                                     <HBox prefHeight="90.0" prefWidth="610.0">
                                        <children>
-                                          <Label prefHeight="90.0" prefWidth="249.0" text="AVG RATING" />
-                                          <Label alignment="CENTER" contentDisplay="CENTER" prefHeight="90.0" prefWidth="120.0" text="x ratings" textAlignment="CENTER">
+                                          <VBox prefHeight="90.0" prefWidth="254.0">
+                                             <children>
+                                                <Label fx:id="detailsAvgRating" alignment="BOTTOM_CENTER" prefHeight="20.0" prefWidth="257.0" text="Avg rating">
+                                                   <font>
+                                                      <Font size="14.0" />
+                                                   </font>
+                                                </Label>
+                                                <StackPane prefHeight="150.0" prefWidth="200.0">
+                                                   <children>
+                                                      <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" style="-fx-spacing: 10;">
+                                                         <children>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star2.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star2.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star2.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star2.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star2.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                         </children>
+                                                      </HBox>
+                                                      <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" style="-fx-spacing: 10;">
+                                                         <children>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                               <image>
+                                                                  <Image url="@../../../img/star.png" />
+                                                               </image>
+                                                            </ImageView>
+                                                         </children>
+                                                      </HBox>
+                                                   </children>
+                                                </StackPane>
+                                             </children>
+                                          </VBox>
+                                          <Label fx:id="detailsRatings" alignment="CENTER" contentDisplay="CENTER" prefHeight="90.0" prefWidth="120.0" text="x ratings" textAlignment="CENTER">
                                              <font>
                                                 <Font size="14.0" />
                                              </font>
                                           </Label>
-                                          <Label alignment="CENTER" prefHeight="90.0" prefWidth="120.0" text="y reviews" textAlignment="CENTER">
+                                          <Label fx:id="detailsReviews" alignment="CENTER" prefHeight="90.0" prefWidth="120.0" text="y reviews" textAlignment="CENTER">
                                              <font>
                                                 <Font size="14.0" />
                                              </font>
                                           </Label>
                                        </children>
                                     </HBox>
-                                    <Label prefHeight="152.0" prefWidth="610.0" text="Description" />
+                                    <Label fx:id="detailsDescription" prefHeight="152.0" prefWidth="610.0" text="Description" />
                                  </children>
                               </VBox>
                               <ComboBox layoutX="36.0" layoutY="304.0" prefHeight="38.0" prefWidth="202.0" />
@@ -151,6 +221,7 @@
                                     <Font size="24.0" />
                                  </font>
                               </Label>
+                              <Label layoutX="36.0" layoutY="355.0" text="Your rating" />
                            </children>
                         </AnchorPane>
                     </content>
