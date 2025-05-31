@@ -2,7 +2,9 @@ package com.program.bookie.app.controllers;
 
 import com.program.bookie.models.*;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Scene;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
@@ -10,7 +12,10 @@ import javafx.scene.image.ImageView;
 import com.program.bookie.models.ResponseType.*;
 import com.program.bookie.client.Client;
 import com.program.bookie.models.ResponseType.*;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 
 import java.util.HashMap;
@@ -43,17 +48,18 @@ public class SearchController {
 
     private boolean isUpdating = false;
 
-
-
     private final String[] statuses = {"Want to read", "Currently reading", "Read"};
     private final String WANT_TO_READ = "Want to read";
 
     private String currentUsername;
     private int currentBookId;
+    private Book currentBook;
+    private MainController mainController; // Controller glownego panelu (przesylanie informacji o kliknieciu)
 
     public void setData(Book book, String username) {
         this.currentUsername = username;
         this.currentBookId = book.getBookId();
+        this.currentBook = book;
 
         titleLabel.setText(book.getTitle());
         authorLabel.setText("by " + book.getAuthor());
@@ -61,21 +67,19 @@ public class SearchController {
         ratingCountLabel.setText(book.getRatingCount() + " ratings");
         publicationYearLabel.setText("published in " + book.getPublicationYear());
 
-
         setupBookCover(book);
-
         initializeComboBox();
-
         loadUserRating();
-
         loadReadingStatus();
-
         setupClickablePanel();
+    }
+
+    public void setMainController(MainController mainController) {
+        this.mainController = mainController;
     }
 
     private void setupClickablePanel() {
         if (mainPane != null) {
-
             mainPane.setStyle(mainPane.getStyle() + "; -fx-cursor: hand;");
 
             mainPane.setOnMouseEntered(e -> {
@@ -94,16 +98,19 @@ public class SearchController {
                     return;
                 }
 
-                System.out.println("Kliknieto");
+                if (mainController != null && currentBook != null) {
+                    mainController.showBookDetails(currentBook);
+                } else {
+                    System.out.println("Clicked on book: " + (currentBook != null ? currentBook.getTitle() : "Unknown"));
+                }
             });
         }
     }
+
     private boolean isClickOnComboBox(Object target) {
-        // Check if the click target is part of the ComboBox
         if (target instanceof javafx.scene.Node) {
             javafx.scene.Node node = (javafx.scene.Node) target;
             javafx.scene.Node parent = node.getParent();
-
 
             while (parent != null) {
                 if (parent == statusComboBox) {
@@ -114,7 +121,6 @@ public class SearchController {
         }
         return false;
     }
-
 
     private void setupBookCover(Book book) {
         if (book.getCoverImagePath() != null && !book.getCoverImagePath().isEmpty()) {
@@ -128,7 +134,6 @@ public class SearchController {
                 bookCover.setFitHeight(fitHeight);
                 bookCover.setPreserveRatio(true);
                 bookCover.setSmooth(true);
-
 
                 double imageWidth = image.getWidth();
                 double imageHeight = image.getHeight();
@@ -152,7 +157,6 @@ public class SearchController {
     private void initializeComboBox() {
         statusComboBox.getItems().clear();
         statusComboBox.getItems().addAll(statuses);
-
 
         statusComboBox.setOnAction(e -> {
             if (!isUpdating) {
@@ -188,7 +192,6 @@ public class SearchController {
 
     // Funkcja do wyświetlania gwiazdek na podstawie oceny
     private void displayUserRating(int rating) {
-
         ImageView[] stars = {star1, star2, star3, star4, star5};
 
         for (int i = 0; i < stars.length; i++) {
@@ -223,7 +226,6 @@ public class SearchController {
             if (response.getType() == ResponseType.SUCCESS) {
                 String status = (String) response.getData();
                 if (status == null || status.trim().isEmpty()) {
-
                     statusComboBox.getSelectionModel().select(WANT_TO_READ);
                     setComboBoxStyle(true);
                 } else {
@@ -258,10 +260,13 @@ public class SearchController {
 
             if (response.getType() == ResponseType.SUCCESS) {
                 System.out.println("Reading status updated successfully to: " + selectedStatus);
+
+                if ("Read".equals(selectedStatus)) {
+                    openReviewWindow(currentBook, currentUsername, false);
+                }
                 setComboBoxStyle(false);
             } else {
                 System.err.println("Error updating reading status: " + response.getData());
-
             }
 
         } catch (Exception e) {
@@ -289,7 +294,6 @@ public class SearchController {
             }
         });
 
-
         statusComboBox.setButtonCell(new javafx.scene.control.ListCell<String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -309,5 +313,33 @@ public class SearchController {
         });
     }
 
+    //ADD REVIEW
 
+    private void openReviewWindow(Book book, String username, boolean editMode) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/review.fxml"));
+            AnchorPane reviewPane = loader.load();
+
+            ReviewController controller = loader.getController();
+            controller.setBookData(book, username, editMode);
+
+            Stage reviewStage = new Stage();
+            reviewStage.setTitle(editMode ? "Edit Review" : "Add Review");
+            reviewStage.initStyle(StageStyle.UNDECORATED);
+            reviewStage.setScene(new Scene(reviewPane, 480, 360));
+            reviewStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
+            reviewStage.setResizable(false);
+
+            // Po zamknięciu okna review, odśwież dane
+            reviewStage.setOnHidden(e -> {
+                loadUserRating();
+            });
+
+            reviewStage.show();
+
+        } catch (Exception e) {
+            System.err.println("Error opening review window: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }

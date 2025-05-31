@@ -2,13 +2,12 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
-
 
 <AnchorPane prefHeight="360.0" prefWidth="480.0" style="-fx-background-color: #E9E9E9;" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.ReviewController">
    <children>
@@ -36,8 +35,7 @@
             </Button>
          </children>
       </AnchorPane>
-      <TextField fx:id="reviewText" alignment="TOP_LEFT" layoutX="218.0" layoutY="98.0" prefHeight="191.0" prefWidth="244.0" promptText="What are your thoughts?" />
-      <Button fx:id="reviewButton" layoutX="250.0" layoutY="312.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="185.0" style="-fx-background-color: #839174;" text="Add a review" textFill="WHITE">
+      <Button fx:id="reviewButton" layoutX="250.0" layoutY="312.0" mnemonicParsing="false" onAction="#onReviewButtonAction" prefHeight="26.0" prefWidth="185.0" style="-fx-background-color: #839174;" text="Add a review" textFill="WHITE">
          <font>
             <Font name="System Bold" size="14.0" />
          </font>
@@ -96,5 +94,6 @@
             <Font size="14.0" />
          </font>
       </Label>
+      <TextArea fx:id="reviewText" layoutX="218.0" layoutY="98.0" prefHeight="200.0" prefWidth="244.0" promptText="What are your thoughts?" />
    </children>
 </AnchorPane>

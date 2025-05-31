@@ -9,6 +9,8 @@ public enum RequestType {
     GET_READING_STATUS,
     UPDATE_READING_STATUS,
     GET_USER_RATING,
+    GET_USER_REVIEW,
+    SAVE_USER_REVIEW,
     DISCONNECT
 
 };
