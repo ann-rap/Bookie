@@ -19,6 +19,11 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.StageStyle;
+import javafx.application.Platform;
+import java.util.Objects;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,6 +55,19 @@ public class MainController implements Initializable {
     @FXML
     private TextField searchField;
 
+    @FXML
+    private Button userButton;
+    @FXML
+    private VBox userDropdown;
+    @FXML
+    private Label userGreeting;
+    @FXML
+    private Button accountSettingsButton;
+    @FXML
+    private Button logoutButton;
+
+    private boolean isUserMenuVisible = false;
+
     private Client client = Client.getInstance();
     private User currentUser;
 
@@ -73,6 +91,40 @@ public class MainController implements Initializable {
                 client.disconnect();
             }
         }));
+
+        Platform.runLater(() -> {
+            if (userButton.getScene() != null) {
+                userButton.getScene().setOnMouseClicked(event -> {
+                    if (!isClickOnUserMenu(event.getTarget()) && isUserMenuVisible) {
+                        hideUserMenu();
+                    }
+                });
+            }
+        });
+
+        if (searchField != null) {
+            searchField.setOnMouseClicked(event -> {
+                if (isUserMenuVisible) {
+                    hideUserMenu();
+                }
+            });
+        }
+
+        // Hover effects dla przycisków w menu użytkownika
+        if (accountSettingsButton != null) {
+            accountSettingsButton.setOnMouseEntered(e ->
+                    accountSettingsButton.setStyle("-fx-background-color: #839174; -fx-alignment: center-left; -fx-padding: 10 16; -fx-text-fill: white; -fx-border-color: transparent;"));
+            accountSettingsButton.setOnMouseExited(e ->
+                    accountSettingsButton.setStyle("-fx-background-color: transparent; -fx-alignment: center-left; -fx-padding: 10 16; -fx-text-fill: #615252; -fx-border-color: transparent;"));
+        }
+
+        if (logoutButton != null) {
+            logoutButton.setOnMouseEntered(e ->
+                    logoutButton.setStyle("-fx-background-color: #839174; -fx-alignment: center-left; -fx-padding: 10 16; -fx-text-fill: white; -fx-border-color: transparent;"));
+            logoutButton.setOnMouseExited(e ->
+                    logoutButton.setStyle("-fx-background-color: transparent; -fx-alignment: center-left; -fx-padding: 10 16; -fx-text-fill: #615252; -fx-border-color: transparent;"));
+        }
+
     }
 
     //MENU
@@ -260,6 +312,81 @@ public class MainController implements Initializable {
         homePane.setVisible(true);
         searchPane.setVisible(false);
 
+    }
+
+
+    public void toggleUserMenu(ActionEvent event) {
+        isUserMenuVisible = !isUserMenuVisible;
+        userDropdown.setVisible(isUserMenuVisible);
+
+        if (isUserMenuVisible && currentUser != null) {
+            userGreeting.setText("Hi " + currentUser.getUsername() + "!");
+        }
+    }
+
+    public void onAccountSettingsClicked(ActionEvent event) {
+        System.out.println("Account settings clicked - funkcja do zaimplementowania w przyszłości");
+        hideUserMenu();
+    }
+
+    public void onLogoutClicked(ActionEvent event) {
+        try {
+            if (client != null) {
+                System.out.println("Logging out user: " + currentUser.getUsername());
+                client.disconnect();
+            }
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/login.fxml"));
+            Parent root = loader.load();
+
+            Stage loginStage = new Stage();
+            loginStage.setTitle("Bookie");
+            loginStage.initStyle(StageStyle.UNDECORATED);
+            loginStage.setScene(new Scene(root, 520, 400));
+            loginStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
+
+            Stage currentStage = (Stage) logoutButton.getScene().getWindow();
+            currentStage.close();
+            loginStage.show();
+
+        } catch (Exception e) {
+            System.err.println("Error during logout: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void hideUserMenu() {
+        isUserMenuVisible = false;
+        userDropdown.setVisible(false);
+    }
+
+    // Sprawdź czy kliknięto na przycisk użytkownika lub menu
+    private boolean isClickOnUserMenu(Object target) {
+        if (target instanceof javafx.scene.Node) {
+            javafx.scene.Node node = (javafx.scene.Node) target;
+
+            // Sprawdź czy kliknięto na przycisk użytkownika
+            if (node == userButton || isChildOf(node, userButton)) {
+                return true;
+            }
+
+            // Sprawdź czy kliknięto w menu dropdown
+            if (node == userDropdown || isChildOf(node, userDropdown)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isChildOf(javafx.scene.Node node, javafx.scene.Node parent) {
+        javafx.scene.Node current = node.getParent();
+        while (current != null) {
+            if (current == parent) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
     }
 
 }
