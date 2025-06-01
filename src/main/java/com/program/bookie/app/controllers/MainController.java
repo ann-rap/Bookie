@@ -36,7 +36,7 @@ public class MainController implements Initializable {
 
     //MENU
     @FXML
-    private Button closeButton,miniButton,homeButton,shelfButton,statisticsButton,searchButton;
+    private Button closeButton, miniButton, homeButton, shelfButton, statisticsButton, searchButton;
     //OTHERS
     @FXML
     private Label welcomeLabel;
@@ -51,14 +51,14 @@ public class MainController implements Initializable {
     private Pane homePane, searchPane, bookDetailsPane;
 
     @FXML
-    private Label detailsTitle, detailsAuthor, detailsRatings,detailsReviews,detailsDescription, detailsAvgRating,ratingStatusLabel;
+    private Label detailsTitle, detailsAuthor, detailsRatings, detailsReviews, detailsDescription, detailsAvgRating, ratingStatusLabel;
 
     @FXML
     private TextField searchField;
 
     @FXML
 
-    private ImageView coverBookDetails,detailsStarY1,detailsStarY2,detailsStarY3,detailsStarY4,detailsStarY5,detailsStarG1,detailsStarG2,detailsStarG3,detailsStarG4,detailsStarG5,userStar1,userStar2,userStar3,userStar4,userStar5;
+    private ImageView coverBookDetails, detailsStarY1, detailsStarY2, detailsStarY3, detailsStarY4, detailsStarY5, detailsStarG1, detailsStarG2, detailsStarG3, detailsStarG4, detailsStarG5, userStar1, userStar2, userStar3, userStar4, userStar5;
 
     @FXML
     private ComboBox detailsStatusCombo;
@@ -68,6 +68,7 @@ public class MainController implements Initializable {
 
     private Book currentBookDetails;
 
+    @FXML
     private Button userButton;
     @FXML
     private VBox userDropdown;
@@ -91,8 +92,7 @@ public class MainController implements Initializable {
     }
 
     @Override
-    public void initialize(URL url, ResourceBundle rb)
-    {
+    public void initialize(URL url, ResourceBundle rb) {
         setHover(homeButton);
         setHover(statisticsButton);
         setHover(shelfButton);
@@ -158,6 +158,82 @@ public class MainController implements Initializable {
         button.setOnMouseEntered(e -> button.setStyle("-fx-background-color: #54664D;"));
         button.setOnMouseExited(e -> button.setStyle("-fx-background-color: #839174;"));
     }
+
+    public void toggleUserMenu(ActionEvent event) {
+        isUserMenuVisible = !isUserMenuVisible;
+        userDropdown.setVisible(isUserMenuVisible);
+
+        if (isUserMenuVisible && currentUser != null) {
+            userGreeting.setText("Hi " + currentUser.getUsername() + "!");
+        }
+    }
+
+    public void onAccountSettingsClicked(ActionEvent event) {
+        System.out.println("Account settings clicked - funkcja do zaimplementowania w przyszłości");
+        hideUserMenu();
+    }
+
+    public void onLogoutClicked(ActionEvent event) {
+        try {
+            if (client != null) {
+                System.out.println("Logging out user: " + currentUser.getUsername());
+                client.disconnect();
+            }
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/login.fxml"));
+            Parent root = loader.load();
+
+            Stage loginStage = new Stage();
+            loginStage.setTitle("Bookie");
+            loginStage.initStyle(StageStyle.UNDECORATED);
+            loginStage.setScene(new Scene(root, 520, 400));
+            loginStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
+
+            Stage currentStage = (Stage) logoutButton.getScene().getWindow();
+            currentStage.close();
+            loginStage.show();
+
+        } catch (Exception e) {
+            System.err.println("Error during logout: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
+    private void hideUserMenu() {
+        isUserMenuVisible = false;
+        userDropdown.setVisible(false);
+    }
+
+    // Sprawdź czy kliknięto na przycisk użytkownika lub menu
+    private boolean isClickOnUserMenu(Object target) {
+        if (target instanceof javafx.scene.Node) {
+            javafx.scene.Node node = (javafx.scene.Node) target;
+
+            // Sprawdź czy kliknięto na przycisk użytkownika
+            if (node == userButton || isChildOf(node, userButton)) {
+                return true;
+            }
+
+            // Sprawdź czy kliknięto w menu dropdown
+            if (node == userDropdown || isChildOf(node, userDropdown)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isChildOf(javafx.scene.Node node, javafx.scene.Node parent) {
+        javafx.scene.Node current = node.getParent();
+        while (current != null) {
+            if (current == parent) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
 
     //HOMEPAGE
     public void loadTopRatedBooks() {
@@ -317,10 +393,10 @@ public class MainController implements Initializable {
             }
         } catch (Exception e) {
             e.printStackTrace();
-        }}
+        }
+    }
 
-    public void onHomeClicked()
-    {
+    public void onHomeClicked() {
         loadTopRatedBooks();
         homePane.setVisible(true);
         searchPane.setVisible(false);
@@ -332,7 +408,7 @@ public class MainController implements Initializable {
     public void showBookDetails(Book book) {
         if (book == null) return;
 
-        currentBookDetails=book;
+        currentBookDetails = book;
         if (detailsTitle != null) {
             detailsTitle.setText(book.getTitle());
         }
@@ -664,44 +740,6 @@ public class MainController implements Initializable {
 
         } catch (Exception e) {
             System.err.println("Error opening review window: " + e.getMessage());
-
-
-    public void toggleUserMenu(ActionEvent event) {
-        isUserMenuVisible = !isUserMenuVisible;
-        userDropdown.setVisible(isUserMenuVisible);
-
-        if (isUserMenuVisible && currentUser != null) {
-            userGreeting.setText("Hi " + currentUser.getUsername() + "!");
-        }
-    }
-
-    public void onAccountSettingsClicked(ActionEvent event) {
-        System.out.println("Account settings clicked - funkcja do zaimplementowania w przyszłości");
-        hideUserMenu();
-    }
-
-    public void onLogoutClicked(ActionEvent event) {
-        try {
-            if (client != null) {
-                System.out.println("Logging out user: " + currentUser.getUsername());
-                client.disconnect();
-            }
-
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/login.fxml"));
-            Parent root = loader.load();
-
-            Stage loginStage = new Stage();
-            loginStage.setTitle("Bookie");
-            loginStage.initStyle(StageStyle.UNDECORATED);
-            loginStage.setScene(new Scene(root, 520, 400));
-            loginStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
-
-            Stage currentStage = (Stage) logoutButton.getScene().getWindow();
-            currentStage.close();
-            loginStage.show();
-
-        } catch (Exception e) {
-            System.err.println("Error during logout: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -711,45 +749,7 @@ public class MainController implements Initializable {
             openReviewWindow(currentBookDetails, currentUser.getUsername());
         }
     }
-
-
-
-    private void hideUserMenu() {
-        isUserMenuVisible = false;
-        userDropdown.setVisible(false);
-    }
-
-    // Sprawdź czy kliknięto na przycisk użytkownika lub menu
-    private boolean isClickOnUserMenu(Object target) {
-        if (target instanceof javafx.scene.Node) {
-            javafx.scene.Node node = (javafx.scene.Node) target;
-
-            // Sprawdź czy kliknięto na przycisk użytkownika
-            if (node == userButton || isChildOf(node, userButton)) {
-                return true;
-            }
-
-            // Sprawdź czy kliknięto w menu dropdown
-            if (node == userDropdown || isChildOf(node, userDropdown)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean isChildOf(javafx.scene.Node node, javafx.scene.Node parent) {
-        javafx.scene.Node current = node.getParent();
-        while (current != null) {
-            if (current == parent) {
-                return true;
-            }
-            current = current.getParent();
-        }
-        return false;
-    }
-
 }
-
 
 
 
