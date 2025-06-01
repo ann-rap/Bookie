@@ -470,7 +470,7 @@ public class MainController implements Initializable {
                 System.out.println("Reading status updated successfully to: " + selectedStatus);
 
                 if ("Read".equals(selectedStatus)) {
-                    openReviewWindow(currentBookDetails, currentUser.getUsername(), false);
+                    openReviewWindow(currentBookDetails, currentUser.getUsername());
                 }
 
                 setBookDetailsComboBoxStyle(false);
@@ -588,16 +588,15 @@ public class MainController implements Initializable {
     }
 
     //EDIT OR ADD REVIEW FROM DETAILS
-    private void openReviewWindow(Book book, String username, boolean editMode) {
+    private void openReviewWindow(Book book, String username) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/review.fxml"));
             AnchorPane reviewPane = loader.load();
 
             ReviewController controller = loader.getController();
-            controller.setBookData(book, username, editMode);
+            controller.setBookData(book, username);
 
             Stage reviewStage = new Stage();
-            reviewStage.setTitle(editMode ? "Edit Review" : "Add Review");
             reviewStage.initStyle(StageStyle.UNDECORATED);
             reviewStage.setScene(new Scene(reviewPane, 480, 360));
             reviewStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
@@ -619,7 +618,7 @@ public class MainController implements Initializable {
 
     public void onEditRatingButtonClicked() {
         if (currentBookDetails != null && currentUser != null) {
-            openReviewWindow(currentBookDetails, currentUser.getUsername(), true);
+            openReviewWindow(currentBookDetails, currentUser.getUsername());
         }
     }
 

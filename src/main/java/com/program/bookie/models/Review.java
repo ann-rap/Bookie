@@ -10,22 +10,25 @@ public class Review implements Serializable {
     private int bookId;
     private int rating;
     private String reviewText;
+    private boolean isSpoiler;
     private String username;
 
     public Review() {}
 
-    public Review(int userId, int bookId, int rating, String reviewText) {
+    public Review(int userId, int bookId, int rating, String reviewText,boolean isSpoiler) {
         this.userId = userId;
         this.bookId = bookId;
         this.rating = rating;
         this.reviewText = reviewText;
+        this.isSpoiler = isSpoiler;
     }
 
-    public Review(String username, int bookId, int rating, String reviewText) {
+    public Review(String username, int bookId, int rating, String reviewText,boolean isSpoiler) {
         this.username = username;
         this.bookId = bookId;
         this.rating = rating;
         this.reviewText = reviewText;
+        this.isSpoiler = isSpoiler;
     }
 
     // Getters and Setters
@@ -46,6 +49,10 @@ public class Review implements Serializable {
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+
+    public boolean isSpoiler() { return isSpoiler; }
+    public void setSpoiler(boolean spoiler) { isSpoiler = spoiler; }
+
 
     @Override
     public String toString() {

@@ -84,6 +84,10 @@ public class ClientHandler implements Runnable {
                 return handleUpdateReadingStatus(request);
             case GET_USER_RATING:
                 return handleGetUserRating(request);
+            case GET_USER_REVIEW:
+                return handleGetUserReview(request);
+            case SAVE_USER_REVIEW:
+                return handleSaveUserReview(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -117,7 +121,7 @@ public class ClientHandler implements Runnable {
             );
 
             if (result == ResponseType.SUCCESS) {
-                // Optionally authenticate newly registered user
+
                 User user = dbManager.authenticateUser(registerData.getUsername(), registerData.getPassword());
                 return new Response(ResponseType.SUCCESS, user);
             } else if (result == ResponseType.INFO) {
@@ -233,7 +237,7 @@ public class ClientHandler implements Runnable {
             Integer bookId = (Integer) data.get("bookId");
 
             if (username == null || bookId == null) {
-                return new Response(ResponseType.ERROR, "Missing username or bookId");
+                return new Response(ResponseType.ERROR, "Brak uzytkownika lub id ksiazki");
             }
 
             Review review = dbManager.getUserReview(username, bookId);
@@ -264,17 +268,18 @@ public class ClientHandler implements Runnable {
                     review.getUsername(),
                     review.getBookId(),
                     review.getRating(),
-                    review.getReviewText()
+                    review.getReviewText(),
+                    review.isSpoiler()
             );
 
             return new Response(ResponseType.SUCCESS, "Review saved successfully");
 
         } catch (SQLException e) {
-            System.err.println("Blad bazy danych podczas handleSaveUserReview: " + e.getMessage());
-            return new Response(ResponseType.ERROR, "Database blad: " + e.getMessage());
+            System.err.println("Database error in handleSaveUserReview: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Blad przy handleSaveUserReview: " + e.getMessage());
-            return new Response(ResponseType.ERROR, "Error : " + e.getMessage());
+            System.err.println("Error in handleSaveUserReview: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 
