@@ -102,10 +102,10 @@ public class ClientHandler implements Runnable {
                 currentUser = user;
                 return new Response(ResponseType.SUCCESS, user);
             } else {
-                return new Response(ResponseType.ERROR, "Nieprawidłowe dane logowania");
+                return new Response(ResponseType.ERROR, "Invalid username or password");
             }
         } catch (SQLException e) {
-            return new Response(ResponseType.ERROR, "Błąd bazy danych: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         }
     }
 

@@ -24,7 +24,7 @@ public class DatabaseConnection {
     Zatwierdzenie logowania, zwraca uzytkownika jesli sie uda.
      */
     public User authenticateUser(String username, String password) throws SQLException {
-        String query = "SELECT * FROM user_account WHERE username = ? AND password = ?";
+        String query = "SELECT * FROM user_account WHERE BINARY username = ? AND BINARY password = ?";
 
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setString(1, username);
