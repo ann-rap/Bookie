@@ -79,4 +79,21 @@ public class Client {
             input = null;
         }
     }
+
+    public ImageData getImage(String filename) {
+        try {
+            Request request = new Request(RequestType.GET_IMAGE, filename);
+            Response response = sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                return (ImageData) response.getData();
+            } else {
+                System.err.println("Error getting image: " + response.getData());
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("Exception getting image: " + e.getMessage());
+            return null;
+        }
+    }
 }

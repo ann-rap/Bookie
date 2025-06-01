@@ -10,9 +10,9 @@ import java.util.List;
 
 
 public class DatabaseConnection {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/login";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/bookie";
     private static final String USERNAME = "root";
-    private static final String PASSWORD = "hasloProgram";
+    private static final String PASSWORD = "";
 
     private Connection connection;
 
@@ -364,4 +364,61 @@ public class DatabaseConnection {
             System.err.println("Błąd zamykania połączenia: " + e.getMessage());
         }
     }
+
+    /**
+     * Aktualizuje ścieżkę do okładki książki
+     */
+    public void updateBookCover(int bookId, String coverImagePath) throws SQLException {
+        String sql = "UPDATE books SET cover_image = ? WHERE book_id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, coverImagePath);
+            stmt.setInt(2, bookId);
+
+            int rowsUpdated = stmt.executeUpdate();
+            if (rowsUpdated == 0) {
+                throw new SQLException("No book found with ID: " + bookId);
+            }
+
+            System.out.println("Updated cover for book ID " + bookId + " to: " + coverImagePath);
+        }
+    }
+
+    /**
+     * Pobiera ścieżkę do okładki książki
+     */
+    public String getBookCoverPath(int bookId) throws SQLException {
+        String sql = "SELECT cover_image FROM books WHERE book_id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("cover_image");
+                } else {
+                    throw new SQLException("No book found with ID: " + bookId);
+                }
+            }
+        }
+    }
+
+    /**
+     * Sprawdza czy książka istnieje
+     */
+    public boolean bookExists(int bookId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM books WHERE book_id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+                return false;
+            }
+        }
+    }
+
 }
