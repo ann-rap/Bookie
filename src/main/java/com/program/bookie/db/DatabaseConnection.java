@@ -2,6 +2,7 @@ package com.program.bookie.db;
 
 import com.program.bookie.models.User;
 import com.program.bookie.models.*;
+import com.program.bookie.server.QuoteService;
 
 import java.sql.*;
 import java.time.LocalDate;
@@ -10,14 +11,16 @@ import java.util.List;
 
 
 public class DatabaseConnection {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/login";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/bookie";
     private static final String USERNAME = "root";
-    private static final String PASSWORD = "hasloProgram";
+    private static final String PASSWORD = "";
 
     private Connection connection;
+    private QuoteService quoteService;
 
     public DatabaseConnection() throws SQLException {
         this.connection = DriverManager.getConnection(DB_URL, USERNAME, PASSWORD);
+        this.quoteService = new QuoteService();
     }
 
     /*
@@ -461,6 +464,13 @@ public class DatabaseConnection {
                 }
             }
         }
+    }
+
+    /*
+    Pobiera losowy cytat o książkach
+    */
+    public Quote getRandomQuote() {
+        return quoteService.getRandomQuote();
     }
 
 

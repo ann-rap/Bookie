@@ -1,0 +1,44 @@
+# Plik z cytatami o książkach
+# Format: "Tekst cytatu" - Autor
+# lub po prostu: Tekst cytatu
+
+"A reader lives a thousand lives before he dies. The man who never reads lives only one." - George R.R. Martin
+"Books are a uniquely portable magic." - Stephen King
+"The more that you read, the more things you will know." - Dr. Seuss
+"A book is a dream that you hold in your hand." - Neil Gaiman
+"Books fall open, you fall in." - David T.W. McCord
+"A room without books is like a body without a soul." - Marcus Tullius Cicero
+"So many books, so little time." - Frank Zappa
+"Paradise will be a kind of library." - Jorge Luis Borges
+"There is no friend as loyal as a book." - Ernest Hemingway
+"I cannot live without books." - Thomas Jefferson
+"Books are the quietest and most constant of friends." - Charles William Eliot
+"That's the thing about books. They let you travel without moving your feet." - Jhumpa Lahiri
+"Reading brings us unknown friends." - Honoré de Balzac
+"A good book is an event in my life." - Stendhal
+"When I have money, I buy books; then food and clothes." - Erasmus
+"Books are mirrors: you only see in them what you already have inside you." - Carlos Ruiz Zafón
+"The man who does not read has no advantage over the man who cannot read." - Mark Twain
+"Books are the plane, and the train, and the road." - Anna Quindlen
+"A book is a gift you can open again and again." - Garrison Keillor
+"If you don't like to read, you haven't found the right book." - J.K. Rowling
+"Sleep is good, he said, and books are better." - George R.R. Martin
+"You can never get a cup of tea large enough or a book long enough to suit me." - C.S. Lewis
+"I have always been a reader; I have read at every stage of my life." - Anne Rice
+"Books are the carriers of civilization." - Barbara Tuchman
+"Reading is dreaming with your eyes open." - Anissa Trisdianty
+"Books are good company, in sad times and happy times." - Maya Angelou
+"I find television very educating. Every time somebody turns on the set, I go into another room and read a book." - Groucho Marx
+"The world belongs to those who read." - Rick Holland
+"Books were my pass to personal freedom." - Oprah Winfrey
+"Reading one book is like eating one potato chip." - Diane Duane
+"A house without books is like a room without windows." - Heinrich Mann
+"Books don't change people; paragraphs do, sometimes single sentences." - John Piper
+"You know you've read a good book when you turn the last page and feel a little as if you have lost a friend." - Paul Sweeney
+"The book you don't read won't help." - Jim Rohn
+"Books are a form of political action." - Toni Morrison
+"I kept always two books in my pocket, one to read, one to write in." - Robert Louis Stevenson
+"A book is like a piece of rope; it takes on meaning only in connection with the things it holds together." - Norman Cousins
+"Books are the bees which carry the quickening pollen from one to another mind." - James Russell Lowell
+"Once you learn to read, you will be forever free." - Frederick Douglass
+"Books serve to show a man that those original thoughts of his aren't very new after all." - Abraham Lincoln

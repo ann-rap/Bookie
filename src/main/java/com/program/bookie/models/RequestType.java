@@ -11,6 +11,7 @@ public enum RequestType {
     GET_USER_RATING,
     GET_USER_REVIEW,
     SAVE_USER_REVIEW,
+    GET_RANDOM_QUOTE,
     DISCONNECT
 
 };
