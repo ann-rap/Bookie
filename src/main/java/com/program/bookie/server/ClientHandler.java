@@ -84,6 +84,10 @@ public class ClientHandler implements Runnable {
                 return handleUpdateReadingStatus(request);
             case GET_USER_RATING:
                 return handleGetUserRating(request);
+            case GET_USER_REVIEW:
+                return handleGetUserReview(request);
+            case SAVE_USER_REVIEW:
+                return handleSaveUserReview(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -117,7 +121,7 @@ public class ClientHandler implements Runnable {
             );
 
             if (result == ResponseType.SUCCESS) {
-                // Optionally authenticate newly registered user
+
                 User user = dbManager.authenticateUser(registerData.getUsername(), registerData.getPassword());
                 return new Response(ResponseType.SUCCESS, user);
             } else if (result == ResponseType.INFO) {
@@ -221,6 +225,60 @@ public class ClientHandler implements Runnable {
             return new Response(ResponseType.ERROR, "Blad bazy danych: " + e.getMessage());
         } catch (Exception e) {
             System.err.println("Wyjatek podczas handleGetUserRating: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetUserReview(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
+
+            if (username == null || bookId == null) {
+                return new Response(ResponseType.ERROR, "Brak uzytkownika lub id ksiazki");
+            }
+
+            Review review = dbManager.getUserReview(username, bookId);
+            return new Response(ResponseType.SUCCESS, review);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetUserReview: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetUserReview: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleSaveUserReview(Request request) {
+        try {
+            Review review = (Review) request.getData();
+
+            if (review.getUsername() == null || review.getBookId() == 0) {
+                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            }
+
+            if (review.getRating() < 1 || review.getRating() > 5) {
+                return new Response(ResponseType.ERROR, "Rating must be between 1 and 5");
+            }
+
+            dbManager.saveUserReview(
+                    review.getUsername(),
+                    review.getBookId(),
+                    review.getRating(),
+                    review.getReviewText(),
+                    review.isSpoiler()
+            );
+
+            return new Response(ResponseType.SUCCESS, "Review saved successfully");
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleSaveUserReview: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleSaveUserReview: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }

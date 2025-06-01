@@ -119,7 +119,7 @@
                                  <children>
                                     <Label fx:id="detailsTitle" prefHeight="54.0" prefWidth="610.0" text="The title">
                                        <font>
-                                          <Font size="36.0" />
+                                          <Font name="System Bold" size="36.0" />
                                        </font>
                                     </Label>
                                     <Label fx:id="detailsAuthor" text="by Author">
@@ -129,99 +129,133 @@
                                     </Label>
                                     <HBox prefHeight="90.0" prefWidth="610.0">
                                        <children>
-                                          <VBox prefHeight="90.0" prefWidth="254.0">
+                                          <StackPane prefHeight="150.0" prefWidth="200.0">
                                              <children>
-                                                <Label fx:id="detailsAvgRating" alignment="BOTTOM_CENTER" prefHeight="20.0" prefWidth="257.0" text="Avg rating">
-                                                   <font>
-                                                      <Font size="14.0" />
-                                                   </font>
-                                                </Label>
-                                                <StackPane prefHeight="150.0" prefWidth="200.0">
+                                                <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" style="-fx-spacing: 10;">
                                                    <children>
-                                                      <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" style="-fx-spacing: 10;">
-                                                         <children>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star2.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star2.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star2.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star2.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star2.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                         </children>
-                                                      </HBox>
-                                                      <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" style="-fx-spacing: 10;">
-                                                         <children>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                            <ImageView fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
-                                                               <image>
-                                                                  <Image url="@../../../img/star.png" />
-                                                               </image>
-                                                            </ImageView>
-                                                         </children>
-                                                      </HBox>
+                                                      <ImageView fx:id="detailsStarG1" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star52.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                      <ImageView fx:id="detailsStarG2" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star52.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                      <ImageView fx:id="detailsStarG3" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star52.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                      <ImageView fx:id="detailsStarG4" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star52.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                      <ImageView fx:id="detailsStarG5" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star52.png" />
+                                                         </image>
+                                                      </ImageView>
                                                    </children>
-                                                </StackPane>
+                                                </HBox>
+                                                <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" style="-fx-spacing: 10;">
+                                                   <children>
+                                                      <ImageView fx:id="detailsStarY1" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star50.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                      <ImageView fx:id="detailsStarY2" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star50.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                      <ImageView fx:id="detailsStarY3" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star50.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                      <ImageView fx:id="detailsStarY4" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star50.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                      <ImageView fx:id="detailsStarY5" fitHeight="50.0" fitWidth="50.0" pickOnBounds="true" preserveRatio="true">
+                                                         <image>
+                                                            <Image url="@../../../img/star50.png" />
+                                                         </image>
+                                                      </ImageView>
+                                                   </children>
+                                                </HBox>
                                              </children>
-                                          </VBox>
-                                          <Label fx:id="detailsRatings" alignment="CENTER" contentDisplay="CENTER" prefHeight="90.0" prefWidth="120.0" text="x ratings" textAlignment="CENTER">
+                                          </StackPane>
+                                          <Label fx:id="detailsAvgRating" alignment="CENTER" contentDisplay="CENTER" prefHeight="90.0" prefWidth="78.0" text="5.00">
                                              <font>
-                                                <Font size="14.0" />
+                                                <Font size="30.0" />
                                              </font>
                                           </Label>
-                                          <Label fx:id="detailsReviews" alignment="CENTER" prefHeight="90.0" prefWidth="120.0" text="y reviews" textAlignment="CENTER">
-                                             <font>
-                                                <Font size="14.0" />
-                                             </font>
-                                          </Label>
+                                          <Label fx:id="detailsRatings" alignment="CENTER" contentDisplay="CENTER" prefHeight="90.0" prefWidth="70.0" text="x ratings" textAlignment="CENTER" />
+                                          <Label fx:id="detailsReviews" alignment="CENTER" prefHeight="90.0" prefWidth="74.0" text="y reviews" textAlignment="CENTER" />
                                        </children>
                                     </HBox>
-                                    <Label fx:id="detailsDescription" prefHeight="152.0" prefWidth="610.0" text="Description" />
+                                    <Label fx:id="detailsDescription" prefHeight="152.0" prefWidth="610.0" text="Description">
+                                       <font>
+                                          <Font size="16.0" />
+                                       </font>
+                                    </Label>
                                  </children>
                               </VBox>
-                              <ComboBox layoutX="36.0" layoutY="304.0" prefHeight="38.0" prefWidth="202.0" />
-                              <Label layoutX="36.0" layoutY="433.0" text="Reviews">
+                              <ComboBox fx:id="detailsStatusCombo" layoutX="36.0" layoutY="304.0" prefHeight="38.0" prefWidth="202.0" promptText="Want to read" style="-fx-font-size: 16; -fx-font-weight: bold;" />
+                              <Label layoutX="36.0" layoutY="442.0" text="Reviews">
                                  <font>
                                     <Font size="24.0" />
                                  </font>
                               </Label>
-                              <Label layoutX="36.0" layoutY="355.0" text="Your rating" />
+                              <HBox layoutX="36.0" layoutY="357.0" prefHeight="38.0" prefWidth="200.0" style="-fx-spacing: 5;">
+                                 <children>
+                                    <ImageView fx:id="userStar1" fitHeight="35.0" fitWidth="35.0" pickOnBounds="true" preserveRatio="true">
+                                       <image>
+                                          <Image url="@../../../img/star52.png" />
+                                       </image>
+                                    </ImageView>
+                                    <ImageView fx:id="userStar2" fitHeight="35.0" fitWidth="35.0" pickOnBounds="true" preserveRatio="true">
+                                       <image>
+                                          <Image url="@../../../img/star52.png" />
+                                       </image>
+                                    </ImageView>
+                                    <ImageView fx:id="userStar3" fitHeight="35.0" fitWidth="35.0" pickOnBounds="true" preserveRatio="true">
+                                       <image>
+                                          <Image url="@../../../img/star52.png" />
+                                       </image>
+                                    </ImageView>
+                                    <ImageView fx:id="userStar4" fitHeight="35.0" fitWidth="35.0" pickOnBounds="true" preserveRatio="true">
+                                       <image>
+                                          <Image url="@../../../img/star52.png" />
+                                       </image>
+                                    </ImageView>
+                                    <ImageView fx:id="userStar5" fitHeight="35.0" fitWidth="35.0" pickOnBounds="true" preserveRatio="true">
+                                       <image>
+                                          <Image url="@../../../img/star52.png" />
+                                       </image>
+                                    </ImageView>
+                                 </children>
+                              </HBox>
+                              <Label fx:id="ratingStatusLabel" alignment="CENTER" layoutX="42.0" layoutY="404.0" prefHeight="27.0" prefWidth="190.0" text="Edit your rating">
+                                 <font>
+                                    <Font size="14.0" />
+                                 </font>
+                              </Label>
+                              <Button fx:id="editDetailsButton" layoutX="36.0" layoutY="397.0" mnemonicParsing="false" onAction="#onEditRatingButtonClicked" prefHeight="26.0" prefWidth="33.0" style="-fx-background-color: transparent;">
+                                 <graphic>
+                                    <ImageView fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true">
+                                       <image>
+                                          <Image url="@../../../img/edit-text.png" />
+                                       </image>
+                                    </ImageView>
+                                 </graphic>
+                              </Button>
                            </children>
                         </AnchorPane>
                      </content>

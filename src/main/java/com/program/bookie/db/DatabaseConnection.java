@@ -352,6 +352,116 @@ public class DatabaseConnection {
             }
         }
     }
+    /*
+    Pobierz review użytkownika dla konkretnej książki
+    */
+    public Review getUserReview(String username, int bookId) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        String sql = """
+    SELECT r.review_id, r.user_id, r.book_id, r.rating, r.content, r.is_spoiler
+    FROM reviews r
+    INNER JOIN user_account ua ON r.user_id = ua.account_id
+    WHERE ua.username = ? AND r.book_id = ?
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username.trim());
+            stmt.setInt(2, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Review review = new Review();
+                    review.setReviewId(rs.getInt("review_id"));
+                    review.setUserId(rs.getInt("user_id"));
+                    review.setBookId(rs.getInt("book_id"));
+                    review.setRating(rs.getInt("rating"));
+                    review.setReviewText(rs.getString("content"));
+                    review.setSpoiler(rs.getBoolean("is_spoiler"));
+                    review.setUsername(username);
+                    return review;
+                } else {
+                    return null;
+                }
+            }
+        }
+    }
+
+    /*
+    Zapisz lub zaktualizuj review użytkownika
+    */
+    public void saveUserReview(String username, int bookId, int rating, String reviewText, boolean isSpoiler) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5");
+        }
+
+        // Logika spoilerów: zapisz jako spoiler tylko jeśli jest tekst I isSpoiler = true
+        boolean finalIsSpoiler = (reviewText != null && !reviewText.trim().isEmpty()) && isSpoiler;
+
+        // Sprawdź czy review już istnieje
+        String sqlCheck = """
+    SELECT r.review_id FROM reviews r
+    INNER JOIN user_account ua ON r.user_id = ua.account_id
+    WHERE ua.username = ? AND r.book_id = ?
+    """;
+
+        String sqlUpdate = """
+    UPDATE reviews r
+    INNER JOIN user_account ua ON r.user_id = ua.account_id
+    SET r.rating = ?, r.content = ?, r.is_spoiler = ?, r.updated_at = CURRENT_TIMESTAMP
+    WHERE ua.username = ? AND r.book_id = ?
+    """;
+
+        String sqlInsert = """
+    INSERT INTO reviews (user_id, book_id, rating, content, is_spoiler, created_at, updated_at)
+    SELECT ua.account_id, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    FROM user_account ua
+    WHERE ua.username = ?
+    """;
+
+        try (PreparedStatement checkStmt = connection.prepareStatement(sqlCheck)) {
+            checkStmt.setString(1, username.trim());
+            checkStmt.setInt(2, bookId);
+
+            try (ResultSet rs = checkStmt.executeQuery()) {
+                if (rs.next()) {
+                    // Review istnieje - aktualizuj
+                    try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
+                        updateStmt.setInt(1, rating);
+                        updateStmt.setString(2, reviewText);
+                        updateStmt.setBoolean(3, finalIsSpoiler);
+                        updateStmt.setString(4, username.trim());
+                        updateStmt.setInt(5, bookId);
+
+                        int rowsUpdated = updateStmt.executeUpdate();
+                        if (rowsUpdated == 0) {
+                            throw new SQLException("Failed to update review");
+                        }
+                    }
+                } else {
+                    // Review nie istnieje - wstaw nowy
+                    try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
+                        insertStmt.setInt(1, bookId);
+                        insertStmt.setInt(2, rating);
+                        insertStmt.setString(3, reviewText);
+                        insertStmt.setBoolean(4, finalIsSpoiler);
+                        insertStmt.setString(5, username.trim());
+
+                        int rowsInserted = insertStmt.executeUpdate();
+                        if (rowsInserted == 0) {
+                            throw new SQLException("Failed to insert review");
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 
     //Zamykanie polaczenia
