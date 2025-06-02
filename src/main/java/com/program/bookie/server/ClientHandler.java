@@ -8,9 +8,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
+import com.program.bookie.models.UserStatistics;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import com.program.bookie.models.ReadingInsights;
 
 public class ClientHandler implements Runnable {
     private Socket clientSocket;
@@ -90,6 +92,10 @@ public class ClientHandler implements Runnable {
                 return handleSaveUserReview(request);
             case GET_RANDOM_QUOTE:
                 return handleGetRandomQuote(request);
+            case GET_USER_STATISTICS:
+                return handleGetUserStatistics(request);
+            case GET_READING_INSIGHTS:
+                return handleGetReadingInsights(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -294,6 +300,46 @@ public class ClientHandler implements Runnable {
             // Zwróć domyślny cytat w przypadku błędu
             Quote defaultQuote = new Quote("Welcome to Bookie - your personal reading companion!", "Bookie Team");
             return new Response(ResponseType.SUCCESS, defaultQuote);
+        }
+    }
+
+    private Response handleGetUserStatistics(Request request) {
+        try {
+            String username = (String) request.getData();
+
+            if (username == null || username.trim().isEmpty()) {
+                return new Response(ResponseType.ERROR, "Username is required");
+            }
+
+            UserStatistics stats = dbManager.getUserStatistics(username);
+            return new Response(ResponseType.SUCCESS, stats);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetUserStatistics: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetUserStatistics: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetReadingInsights(Request request) {
+        try {
+            String username = (String) request.getData();
+
+            if (username == null || username.trim().isEmpty()) {
+                return new Response(ResponseType.ERROR, "Username is required");
+            }
+
+            ReadingInsights insights = dbManager.getReadingInsights(username);
+            return new Response(ResponseType.SUCCESS, insights);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetReadingInsights: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetReadingInsights: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 
