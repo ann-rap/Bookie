@@ -23,7 +23,6 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.stage.StageStyle;
 import javafx.application.Platform;
 import java.util.Objects;
@@ -57,7 +56,6 @@ public class MainController implements Initializable {
     private TextField searchField;
 
     @FXML
-
     private ImageView coverBookDetails, detailsStarY1, detailsStarY2, detailsStarY3, detailsStarY4, detailsStarY5, detailsStarG1, detailsStarG2, detailsStarG3, detailsStarG4, detailsStarG5, userStar1, userStar2, userStar3, userStar4, userStar5;
 
     @FXML
@@ -79,6 +77,9 @@ public class MainController implements Initializable {
     @FXML
     private Button logoutButton;
 
+    @FXML
+    private Label quoteLabel;
+
     private boolean isUserMenuVisible = false;
 
     private Client client = Client.getInstance();
@@ -89,6 +90,7 @@ public class MainController implements Initializable {
         if (welcomeLabel != null) {
             welcomeLabel.setText("Welcome " + user.getUsername() + "!");
         }
+        loadRandomQuote();
     }
 
     @Override
@@ -234,6 +236,86 @@ public class MainController implements Initializable {
         return false;
     }
 
+    private void loadRandomQuote() {
+        try {
+            Request request = new Request(RequestType.GET_RANDOM_QUOTE, null);
+            Response response = client.sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                Quote quote = (Quote) response.getData();
+                updateQuoteLabel(quote);
+            } else {
+                System.err.println("Error loading quote: " + response.getData());
+                setDefaultQuote();
+            }
+        } catch (Exception e) {
+            System.err.println("Exception loading quote: " + e.getMessage());
+            setDefaultQuote();
+        }
+    }
+
+    private void updateQuoteLabel(Quote quote) {
+        if (quoteLabel != null && quote != null) {
+            Platform.runLater(() -> {
+                String formattedQuote = quote.getFormattedQuote();
+                quoteLabel.setText(formattedQuote);
+
+                // Dostosuj rozmiar czcionki w zależności od długości cytatu
+                adjustQuoteFontSize(formattedQuote.length());
+            });
+        }
+    }
+
+    private void adjustQuoteFontSize(int quoteLength) {
+        if (quoteLabel == null) return;
+
+        double fontSize;
+
+        if (quoteLength <= 60) {
+            fontSize = 20.0;
+        } else if (quoteLength <= 90) {
+            fontSize = 18.0;
+        } else if (quoteLength <= 130) {
+            fontSize = 16.0;
+        } else if (quoteLength <= 180) {
+            fontSize = 15.0;
+        } else {
+            fontSize = 14.0;
+        }
+
+        Platform.runLater(() -> {
+            quoteLabel.setStyle("-fx-font-size: " + fontSize + "px; -fx-text-fill: white; -fx-font-family: 'Bookman Old Style Italic'; -fx-text-alignment: center;");
+            quoteLabel.setWrapText(true);
+            quoteLabel.setMaxWidth(610);
+            quoteLabel.setPrefWidth(610);
+
+            if (quoteLength <= 60) {
+                quoteLabel.setMinHeight(24);
+                quoteLabel.setPrefHeight(30);
+                quoteLabel.setMaxHeight(35);
+                quoteLabel.setTranslateY(-8);
+            } else {
+                quoteLabel.setMinHeight(45);
+                quoteLabel.setPrefHeight(55);
+                quoteLabel.setMaxHeight(65);
+                quoteLabel.setTranslateY(-20);
+            }
+
+            quoteLabel.setAlignment(javafx.geometry.Pos.CENTER);
+        });
+
+        System.out.println("Adjusted quote font size to: " + fontSize + "px for quote length: " + quoteLength + " (max 2 lines)");
+    }
+
+    private void setDefaultQuote() {
+        if (quoteLabel != null) {
+            Platform.runLater(() -> {
+                String defaultText = "\"Welcome to Bookie - your personal reading companion!\"";
+                quoteLabel.setText(defaultText);
+                adjustQuoteFontSize(defaultText.length());
+            });
+        }
+    }
 
     //HOMEPAGE
     public void loadTopRatedBooks() {
@@ -385,6 +467,7 @@ public class MainController implements Initializable {
                 List<Book> results = (List<Book>) response.getData();
 
                 showSearchResults(results);
+                loadRandomQuote();
                 searchPane.setVisible(true);
                 homePane.setVisible(false);
                 bookDetailsPane.setVisible(false);
@@ -398,15 +481,17 @@ public class MainController implements Initializable {
 
     public void onHomeClicked() {
         loadTopRatedBooks();
+        loadRandomQuote();
         homePane.setVisible(true);
         searchPane.setVisible(false);
         bookDetailsPane.setVisible(false);
-
     }
 
     //BOOK DETAILS
     public void showBookDetails(Book book) {
         if (book == null) return;
+
+        loadRandomQuote();
 
         currentBookDetails = book;
         if (detailsTitle != null) {
@@ -750,6 +835,3 @@ public class MainController implements Initializable {
         }
     }
 }
-
-
-

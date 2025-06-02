@@ -88,6 +88,8 @@ public class ClientHandler implements Runnable {
                 return handleGetUserReview(request);
             case SAVE_USER_REVIEW:
                 return handleSaveUserReview(request);
+            case GET_RANDOM_QUOTE:
+                return handleGetRandomQuote(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -280,6 +282,18 @@ public class ClientHandler implements Runnable {
         } catch (Exception e) {
             System.err.println("Error in handleSaveUserReview: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetRandomQuote(Request request) {
+        try {
+            Quote randomQuote = dbManager.getRandomQuote();
+            return new Response(ResponseType.SUCCESS, randomQuote);
+        } catch (Exception e) {
+            System.err.println("Error getting random quote: " + e.getMessage());
+            // Zwróć domyślny cytat w przypadku błędu
+            Quote defaultQuote = new Quote("Welcome to Bookie - your personal reading companion!", "Bookie Team");
+            return new Response(ResponseType.SUCCESS, defaultQuote);
         }
     }
 
