@@ -25,13 +25,12 @@ import javafx.stage.Stage;
 import javafx.scene.Parent;
 import javafx.stage.StageStyle;
 import javafx.application.Platform;
-import java.util.Objects;
+
+import java.util.*;
 
 import java.io.IOException;
 import java.net.URL;
 
-import java.util.List;
-import java.util.ResourceBundle;
 import java.io.ByteArrayInputStream;
 import com.program.bookie.models.ImageData;
 
@@ -869,7 +868,7 @@ public class MainController implements Initializable {
         setDefaultCoverImage(imageView);
         System.out.println("🔄 Using DEFAULT image");
     }
-}
+
 
 
     //EDIT OR ADD REVIEW FROM DETAILS

@@ -11,9 +11,9 @@ import java.util.List;
 
 
 public class DatabaseConnection {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/bookie";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/login";
     private static final String USERNAME = "root";
-    private static final String PASSWORD = "";
+    private static final String PASSWORD = "hasloProgram";
 
     private Connection connection;
     private QuoteService quoteService;
