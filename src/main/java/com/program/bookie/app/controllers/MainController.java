@@ -149,6 +149,7 @@ public class MainController implements Initializable {
     public void closeButtonOnAction(ActionEvent actionEvent) {
         if (client != null) {
             System.out.println("Disconnecting client...");
+            client.clearImageCache();
             client.disconnect();
         }
         Stage stage = (Stage) closeButton.getScene().getWindow();
@@ -183,6 +184,7 @@ public class MainController implements Initializable {
         try {
             if (client != null) {
                 System.out.println("Logging out user: " + currentUser.getUsername());
+                client.clearImageCache();
                 client.disconnect();
             }
 
@@ -344,6 +346,16 @@ public class MainController implements Initializable {
         booksContainer.setSpacing(20);
         booksContainer.setAlignment(Pos.CENTER);
 
+        // Preload obrazów w tle
+        String[] imagePaths = books.stream()
+                .map(Book::getCoverImagePath)
+                .filter(path -> path != null && !path.isEmpty())
+                .toArray(String[]::new);
+
+        if (imagePaths.length > 0) {
+            client.preloadImages(imagePaths);
+        }
+
         for (Book book : books) {
             VBox bookCard = createBookCard(book);
             booksContainer.getChildren().add(bookCard);
@@ -364,28 +376,10 @@ public class MainController implements Initializable {
         coverImageView.setFitWidth(120);
         coverImageView.setFitHeight(160);
         coverImageView.setPreserveRatio(true);
+        coverImageView.setSmooth(true); // Włącz antyaliasing
+
+        // nowe ladowanie
         loadBookCoverSmart(book, coverImageView);
-
-        try {
-            String imagePath = book.getCoverImagePath();
-            if (imagePath != null && !imagePath.isEmpty()) {
-                String fullResourcePath = "/img/" + imagePath;
-
-                URL imageUrl = getClass().getResource(fullResourcePath);
-                if (imageUrl != null) {
-                    Image coverImage = new Image(imageUrl.toString());
-                    coverImageView.setImage(coverImage);
-                    System.out.println("Successfully loaded image: " + fullResourcePath);
-                } else {
-                    System.err.println("Image not found in resources: " + fullResourcePath);
-                    setDefaultCoverImage(coverImageView);
-                }
-            } else {
-                setDefaultCoverImage(coverImageView);
-            }
-        } catch (Exception e) {
-            setDefaultCoverImage(coverImageView);
-        }
 
         // Tytuł książki
         Label titleLabel = new Label(book.getTitle());
@@ -415,7 +409,7 @@ public class MainController implements Initializable {
 
         bookCard.getChildren().addAll(coverImageView, titleLabel, authorLabel, ratingLabel);
 
-
+        // Hover effects
         bookCard.setOnMouseEntered(e -> {
             bookCard.setStyle("-fx-background-color: #e9ecef; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 8, 0, 0, 3);");
         });
@@ -423,7 +417,6 @@ public class MainController implements Initializable {
         bookCard.setOnMouseExited(e -> {
             bookCard.setStyle("-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
         });
-
 
         bookCard.setOnMouseClicked(e -> {
             System.out.println("Clicked on book: " + book.getTitle());
@@ -535,23 +528,30 @@ public class MainController implements Initializable {
         }
 
         if (coverBookDetails != null) {
-            try {
-                String imagePath = book.getCoverImagePath();
-                if (imagePath != null && !imagePath.isEmpty()) {
-                    String fullResourcePath = "/img/" + imagePath;
-                    URL imageUrl = getClass().getResource(fullResourcePath);
-                    if (imageUrl != null) {
-                        Image coverImage = new Image(imageUrl.toString());
-                        coverBookDetails.setImage(coverImage);
-                    } else {
-                        setDefaultDetailsCoverImage();
-                    }
+            String imagePath = book.getCoverImagePath();
+            if (imagePath != null && !imagePath.isEmpty()) {
+                Image cachedImage = client.getImageFX(imagePath);
+                if (cachedImage != null) {
+                    coverBookDetails.setImage(cachedImage);
+                    System.out.println("✅ Details cover loaded from cache: " + imagePath);
                 } else {
-                    setDefaultDetailsCoverImage();
+                    // Fallback do lokalnych zasobów
+                    try {
+                        String fullResourcePath = "/img/" + imagePath;
+                        URL imageUrl = getClass().getResource(fullResourcePath);
+                        if (imageUrl != null) {
+                            Image coverImage = new Image(imageUrl.toString());
+                            coverBookDetails.setImage(coverImage);
+                        } else {
+                            setDefaultDetailsCoverImage();
+                        }
+                    } catch (Exception e) {
+                        setDefaultDetailsCoverImage();
+                        System.err.println("Error loading book details cover: " + e.getMessage());
+                    }
                 }
-            } catch (Exception e) {
+            } else {
                 setDefaultDetailsCoverImage();
-                System.err.println("Error loading book details cover: " + e.getMessage());
             }
         }
 
@@ -804,33 +804,33 @@ public class MainController implements Initializable {
         }
     }
 
-    /**
-     * Inteligentne ładowanie okładki: najpierw serwer, potem lokalne zasoby
-     */
+ /**Inteligentne ładowanie okładki: cache -> serwer -> lokalne zasoby
+ */
     private void loadBookCoverSmart(Book book, ImageView imageView) {
+        String imagePath = book.getCoverImagePath();
+        if (imagePath == null || imagePath.isEmpty()) {
+            setDefaultCoverImage(imageView);
+            return;
+        }
+
+        // Sprawdź czy obraz jest już w cache klienta
+        Image cachedImage = client.getImageFX(imagePath);
+        if (cachedImage != null) {
+            imageView.setImage(cachedImage);
+            System.out.println("✅ Loaded from CLIENT CACHE: " + imagePath);
+            return;
+        }
+
         // Uruchom w osobnym wątku żeby nie blokować UI
         new Thread(() -> {
             try {
-                ImageData imageData = null;
+                // Spróbuj pobrać z serwera (thumbnail)
+                Image serverImage = client.getImageFX(imagePath);
 
-                String imagePath = book.getCoverImagePath();
-                if (imagePath != null && !imagePath.isEmpty()) {
-                    System.out.println("Trying to load from server: " + imagePath);
-                    imageData = client.getImage(imagePath);
-                }
-
-                final ImageData finalImageData = imageData;
                 Platform.runLater(() -> {
-                    if (finalImageData != null && finalImageData.getImageBytes() != null) {
-                        try {
-                            ByteArrayInputStream bis = new ByteArrayInputStream(finalImageData.getImageBytes());
-                            Image coverImage = new Image(bis);
-                            imageView.setImage(coverImage);
-                            System.out.println("✅ Loaded from SERVER: " + finalImageData.getFilename());
-                        } catch (Exception e) {
-                            System.err.println("Error creating image from server data: " + e.getMessage());
-                            loadLocalImage(book, imageView);
-                        }
+                    if (serverImage != null) {
+                        imageView.setImage(serverImage);
+                        System.out.println("✅ Loaded from SERVER: " + imagePath);
                     } else {
                         // Fallback - spróbuj lokalnie
                         loadLocalImage(book, imageView);
