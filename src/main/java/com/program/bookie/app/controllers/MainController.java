@@ -8,11 +8,14 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -20,25 +23,25 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.stage.StageStyle;
 import javafx.application.Platform;
 import java.util.Objects;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+
 import java.util.List;
 import java.util.ResourceBundle;
 import java.io.ByteArrayInputStream;
 import com.program.bookie.models.ImageData;
 
+
 public class MainController implements Initializable {
 
     //MENU
     @FXML
-    private Button closeButton,miniButton,homeButton,shelfButton,statisticsButton,searchButton;
-    //HOMEPAGE
+    private Button closeButton, miniButton, homeButton, shelfButton, statisticsButton, searchButton;
+    //OTHERS
     @FXML
     private Label welcomeLabel;
 
@@ -52,10 +55,21 @@ public class MainController implements Initializable {
     private Pane homePane, searchPane, bookDetailsPane;
 
     @FXML
-    private Label detailsTitle, detailsAuthor, detailsRatings,detailsReviews,detailsDescription, detailsAvgRating;
+    private Label detailsTitle, detailsAuthor, detailsRatings, detailsReviews, detailsDescription, detailsAvgRating, ratingStatusLabel;
 
     @FXML
     private TextField searchField;
+
+    @FXML
+    private ImageView coverBookDetails, detailsStarY1, detailsStarY2, detailsStarY3, detailsStarY4, detailsStarY5, detailsStarG1, detailsStarG2, detailsStarG3, detailsStarG4, detailsStarG5, userStar1, userStar2, userStar3, userStar4, userStar5;
+
+    @FXML
+    private ComboBox detailsStatusCombo;
+
+    @FXML
+    private Button editDetailsButton;
+
+    private Book currentBookDetails;
 
     @FXML
     private Button userButton;
@@ -68,6 +82,9 @@ public class MainController implements Initializable {
     @FXML
     private Button logoutButton;
 
+    @FXML
+    private Label quoteLabel;
+
     private boolean isUserMenuVisible = false;
 
     private Client client = Client.getInstance();
@@ -78,11 +95,11 @@ public class MainController implements Initializable {
         if (welcomeLabel != null) {
             welcomeLabel.setText("Welcome " + user.getUsername() + "!");
         }
+        loadRandomQuote();
     }
 
     @Override
-    public void initialize(URL url, ResourceBundle rb)
-    {
+    public void initialize(URL url, ResourceBundle rb) {
         setHover(homeButton);
         setHover(statisticsButton);
         setHover(shelfButton);
@@ -147,6 +164,162 @@ public class MainController implements Initializable {
     public void setHover(Button button) {
         button.setOnMouseEntered(e -> button.setStyle("-fx-background-color: #54664D;"));
         button.setOnMouseExited(e -> button.setStyle("-fx-background-color: #839174;"));
+    }
+
+    public void toggleUserMenu(ActionEvent event) {
+        isUserMenuVisible = !isUserMenuVisible;
+        userDropdown.setVisible(isUserMenuVisible);
+
+        if (isUserMenuVisible && currentUser != null) {
+            userGreeting.setText("Hi " + currentUser.getUsername() + "!");
+        }
+    }
+
+    public void onAccountSettingsClicked(ActionEvent event) {
+        System.out.println("Account settings clicked - funkcja do zaimplementowania w przyszłości");
+        hideUserMenu();
+    }
+
+    public void onLogoutClicked(ActionEvent event) {
+        try {
+            if (client != null) {
+                System.out.println("Logging out user: " + currentUser.getUsername());
+                client.disconnect();
+            }
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/login.fxml"));
+            Parent root = loader.load();
+
+            Stage loginStage = new Stage();
+            loginStage.setTitle("Bookie");
+            loginStage.initStyle(StageStyle.UNDECORATED);
+            loginStage.setScene(new Scene(root, 520, 400));
+            loginStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
+
+            Stage currentStage = (Stage) logoutButton.getScene().getWindow();
+            currentStage.close();
+            loginStage.show();
+
+        } catch (Exception e) {
+            System.err.println("Error during logout: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
+    private void hideUserMenu() {
+        isUserMenuVisible = false;
+        userDropdown.setVisible(false);
+    }
+
+    // Sprawdź czy kliknięto na przycisk użytkownika lub menu
+    private boolean isClickOnUserMenu(Object target) {
+        if (target instanceof javafx.scene.Node) {
+            javafx.scene.Node node = (javafx.scene.Node) target;
+
+            // Sprawdź czy kliknięto na przycisk użytkownika
+            if (node == userButton || isChildOf(node, userButton)) {
+                return true;
+            }
+
+            // Sprawdź czy kliknięto w menu dropdown
+            if (node == userDropdown || isChildOf(node, userDropdown)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isChildOf(javafx.scene.Node node, javafx.scene.Node parent) {
+        javafx.scene.Node current = node.getParent();
+        while (current != null) {
+            if (current == parent) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    private void loadRandomQuote() {
+        try {
+            Request request = new Request(RequestType.GET_RANDOM_QUOTE, null);
+            Response response = client.sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                Quote quote = (Quote) response.getData();
+                updateQuoteLabel(quote);
+            } else {
+                System.err.println("Error loading quote: " + response.getData());
+                setDefaultQuote();
+            }
+        } catch (Exception e) {
+            System.err.println("Exception loading quote: " + e.getMessage());
+            setDefaultQuote();
+        }
+    }
+
+    private void updateQuoteLabel(Quote quote) {
+        if (quoteLabel != null && quote != null) {
+            Platform.runLater(() -> {
+                String formattedQuote = quote.getFormattedQuote();
+                quoteLabel.setText(formattedQuote);
+
+                // Dostosuj rozmiar czcionki w zależności od długości cytatu
+                adjustQuoteFontSize(formattedQuote.length());
+            });
+        }
+    }
+
+    private void adjustQuoteFontSize(int quoteLength) {
+        if (quoteLabel == null) return;
+
+        double fontSize;
+
+        if (quoteLength <= 60) {
+            fontSize = 20.0;
+        } else if (quoteLength <= 90) {
+            fontSize = 18.0;
+        } else if (quoteLength <= 130) {
+            fontSize = 16.0;
+        } else if (quoteLength <= 180) {
+            fontSize = 15.0;
+        } else {
+            fontSize = 14.0;
+        }
+
+        Platform.runLater(() -> {
+            quoteLabel.setStyle("-fx-font-size: " + fontSize + "px; -fx-text-fill: white; -fx-font-family: 'Bookman Old Style Italic'; -fx-text-alignment: center;");
+            quoteLabel.setWrapText(true);
+            quoteLabel.setMaxWidth(610);
+            quoteLabel.setPrefWidth(610);
+
+            if (quoteLength <= 60) {
+                quoteLabel.setMinHeight(24);
+                quoteLabel.setPrefHeight(30);
+                quoteLabel.setMaxHeight(35);
+                quoteLabel.setTranslateY(-8);
+            } else {
+                quoteLabel.setMinHeight(45);
+                quoteLabel.setPrefHeight(55);
+                quoteLabel.setMaxHeight(65);
+                quoteLabel.setTranslateY(-20);
+            }
+
+            quoteLabel.setAlignment(javafx.geometry.Pos.CENTER);
+        });
+
+        System.out.println("Adjusted quote font size to: " + fontSize + "px for quote length: " + quoteLength + " (max 2 lines)");
+    }
+
+    private void setDefaultQuote() {
+        if (quoteLabel != null) {
+            Platform.runLater(() -> {
+                String defaultText = "\"Welcome to Bookie - your personal reading companion!\"";
+                quoteLabel.setText(defaultText);
+                adjustQuoteFontSize(defaultText.length());
+            });
+        }
     }
 
     //HOMEPAGE
@@ -254,15 +427,14 @@ public class MainController implements Initializable {
 
 
         bookCard.setOnMouseClicked(e -> {
-            // TODO: Otwórz szczegóły książki
             System.out.println("Clicked on book: " + book.getTitle());
+            showBookDetails(book);
         });
 
         return bookCard;
     }
 
     private void setDefaultCoverImage(ImageView imageView) {
-        // Możesz ustawić domyślny obraz lub pozostawić puste
         imageView.setStyle("-fx-background-color: #dddddd; -fx-border-color: #cccccc; -fx-border-width: 1;");
     }
 
@@ -280,6 +452,7 @@ public class MainController implements Initializable {
 
                 SearchController controller = loader.getController();
                 controller.setData(book, currentUser.getUsername());
+                controller.setMainController(this);
 
                 searchBox.getChildren().add(searchResult);
             } catch (IOException e) {
@@ -299,97 +472,337 @@ public class MainController implements Initializable {
             if (response.getType() == ResponseType.SUCCESS) {
                 List<Book> results = (List<Book>) response.getData();
 
-                showSearchResults(results); // populates the VBox
+                showSearchResults(results);
+                loadRandomQuote();
                 searchPane.setVisible(true);
-                homePane.setVisible(false); // switch view
+                homePane.setVisible(false);
+                bookDetailsPane.setVisible(false);
             } else {
                 System.err.println("Search failed: " + response.getData());
             }
         } catch (Exception e) {
             e.printStackTrace();
-        }}
+        }
+    }
 
-    public void onHomeClicked()
-    {
+    public void onHomeClicked() {
         loadTopRatedBooks();
+        loadRandomQuote();
         homePane.setVisible(true);
         searchPane.setVisible(false);
-
+        bookDetailsPane.setVisible(false);
     }
 
+    //BOOK DETAILS
+    public void showBookDetails(Book book) {
+        if (book == null) return;
 
-    public void toggleUserMenu(ActionEvent event) {
-        isUserMenuVisible = !isUserMenuVisible;
-        userDropdown.setVisible(isUserMenuVisible);
+        loadRandomQuote();
 
-        if (isUserMenuVisible && currentUser != null) {
-            userGreeting.setText("Hi " + currentUser.getUsername() + "!");
+        currentBookDetails = book;
+        if (detailsTitle != null) {
+            detailsTitle.setText(book.getTitle());
+        }
+
+        if (detailsAuthor != null) {
+            detailsAuthor.setText("by " + book.getAuthor());
+        }
+
+        if (detailsAvgRating != null) {
+            if (book.getRatingCount() > 0) {
+
+                detailsAvgRating.setText(String.format("%.2f", book.getAverageRating()));
+            } else {
+                detailsAvgRating.setText("No ratings yet");
+            }
+        }
+
+        if (detailsRatings != null) {
+            detailsRatings.setText(book.getRatingCount() + " ratings");
+        }
+
+        if (detailsReviews != null) {
+            detailsReviews.setText(book.getRatingCount() + " reviews");
+        }
+
+        if (detailsDescription != null) {
+            String description = book.getDescription();
+            if (description != null && !description.trim().isEmpty()) {
+                detailsDescription.setText(description);
+                detailsDescription.setWrapText(true);
+            } else {
+                detailsDescription.setText("No description available.");
+            }
+        }
+
+        if (coverBookDetails != null) {
+            try {
+                String imagePath = book.getCoverImagePath();
+                if (imagePath != null && !imagePath.isEmpty()) {
+                    String fullResourcePath = "/img/" + imagePath;
+                    URL imageUrl = getClass().getResource(fullResourcePath);
+                    if (imageUrl != null) {
+                        Image coverImage = new Image(imageUrl.toString());
+                        coverBookDetails.setImage(coverImage);
+                    } else {
+                        setDefaultDetailsCoverImage();
+                    }
+                } else {
+                    setDefaultDetailsCoverImage();
+                }
+            } catch (Exception e) {
+                setDefaultDetailsCoverImage();
+                System.err.println("Error loading book details cover: " + e.getMessage());
+            }
+        }
+
+
+        updateStarRatingD(book.getAverageRating());
+
+        //user status
+        initializeBookDetailsComboBox();
+        loadBookDetailsReadingStatus();
+        loadBookDetailsUserRating();
+
+
+        homePane.setVisible(false);
+        searchPane.setVisible(false);
+        bookDetailsPane.setVisible(true);
+    }
+
+    private void setDefaultDetailsCoverImage() {
+        if (coverBookDetails != null) {
+            coverBookDetails.setStyle("-fx-background-color: #dddddd; -fx-border-color: #cccccc; -fx-border-width: 1;");
+            coverBookDetails.setImage(null);
         }
     }
 
-    public void onAccountSettingsClicked(ActionEvent event) {
-        System.out.println("Account settings clicked - funkcja do zaimplementowania w przyszłości");
-        hideUserMenu();
+    private void updateStarRatingD(double rating) {
+        ImageView[] yellowStars = {detailsStarY1, detailsStarY2, detailsStarY3, detailsStarY4, detailsStarY5};
+        ImageView[] grayStars = {detailsStarG1, detailsStarG2, detailsStarG3, detailsStarG4, detailsStarG5};
+
+        for (ImageView grayStar : grayStars) {
+            if (grayStar != null) {
+                grayStar.setVisible(true);
+            }
+        }
+
+        int fullStars = (int) Math.floor(rating);
+        double partialStar = rating - fullStars;
+
+        for (int i = 0; i < yellowStars.length; i++) {
+            if (yellowStars[i] != null) {
+                if (i < fullStars) {
+                    yellowStars[i].setVisible(true);
+                    yellowStars[i].setClip(null);
+                } else if (i == fullStars && partialStar > 0) {
+                    // Przycinanie gwiazdki
+                    yellowStars[i].setVisible(true);
+
+
+                    javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle();
+                    clip.setWidth(yellowStars[i].getFitWidth() * partialStar);
+                    clip.setHeight(yellowStars[i].getFitHeight());
+                    yellowStars[i].setClip(clip);
+                } else {
+                    yellowStars[i].setVisible(false);
+                }
+            }
+        }
+
+        System.out.println("Updated star rating to: " + rating + " (Full stars: " + fullStars + ", Partial: " + partialStar + ")");
     }
 
-    public void onLogoutClicked(ActionEvent event) {
+
+    //DETAILS USER SECTION
+    private final String[] statuses = {"Want to read", "Currently reading", "Read"};
+    private final String WANT_TO_READ = "Want to read";
+    private boolean isUpdatingStatus = false;
+
+    private void initializeBookDetailsComboBox() {
+        if (detailsStatusCombo != null) {
+            detailsStatusCombo.getItems().clear();
+            detailsStatusCombo.getItems().addAll(statuses);
+
+            detailsStatusCombo.setOnAction(e -> {
+                if (!isUpdatingStatus) {
+                    String selectedStatus = (String) detailsStatusCombo.getSelectionModel().getSelectedItem();
+                    if (selectedStatus != null) {
+                        updateBookDetailsReadingStatus(selectedStatus);
+                    }
+                }
+            });
+        }
+    }
+
+    private void loadBookDetailsReadingStatus() {
+        if (currentBookDetails == null || currentUser == null) return;
+
         try {
-            if (client != null) {
-                System.out.println("Logging out user: " + currentUser.getUsername());
-                client.disconnect();
+            Map<String, Object> data = new HashMap<>();
+            data.put("username", currentUser.getUsername());
+            data.put("bookId", currentBookDetails.getBookId());
+
+            Request request = new Request(RequestType.GET_READING_STATUS, data);
+            Response response = client.sendRequest(request);
+
+            isUpdatingStatus = true;
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                String status = (String) response.getData();
+                if (status == null || status.trim().isEmpty()) {
+                    detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+                    setBookDetailsComboBoxStyle(true);
+                } else {
+                    detailsStatusCombo.getSelectionModel().select(status);
+                    setBookDetailsComboBoxStyle(false);
+                }
+            } else {
+                System.err.println("Error loading reading status: " + response.getData());
+                detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+                setBookDetailsComboBoxStyle(true);
             }
-
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/login.fxml"));
-            Parent root = loader.load();
-
-            Stage loginStage = new Stage();
-            loginStage.setTitle("Bookie");
-            loginStage.initStyle(StageStyle.UNDECORATED);
-            loginStage.setScene(new Scene(root, 520, 400));
-            loginStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
-
-            Stage currentStage = (Stage) logoutButton.getScene().getWindow();
-            currentStage.close();
-            loginStage.show();
 
         } catch (Exception e) {
-            System.err.println("Error during logout: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Exception loading reading status: " + e.getMessage());
+            detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+            setBookDetailsComboBoxStyle(true);
+        } finally {
+            isUpdatingStatus = false;
         }
     }
 
-    private void hideUserMenu() {
-        isUserMenuVisible = false;
-        userDropdown.setVisible(false);
+    private void updateBookDetailsReadingStatus(String selectedStatus) {
+        if (currentBookDetails == null || currentUser == null) return;
+
+        try {
+            Map<String, Object> data = new HashMap<>();
+            data.put("username", currentUser.getUsername());
+            data.put("bookId", currentBookDetails.getBookId());
+            data.put("status", selectedStatus);
+
+            Request request = new Request(RequestType.UPDATE_READING_STATUS, data);
+            Response response = client.sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                System.out.println("Reading status updated successfully to: " + selectedStatus);
+
+                if ("Read".equals(selectedStatus)) {
+                    openReviewWindow(currentBookDetails, currentUser.getUsername());
+                }
+
+                setBookDetailsComboBoxStyle(false);
+            } else {
+                System.err.println("Error updating reading status: " + response.getData());
+            }
+
+        } catch (Exception e) {
+            System.err.println("Exception updating reading status: " + e.getMessage());
+        }
     }
 
-    // Sprawdź czy kliknięto na przycisk użytkownika lub menu
-    private boolean isClickOnUserMenu(Object target) {
-        if (target instanceof javafx.scene.Node) {
-            javafx.scene.Node node = (javafx.scene.Node) target;
+    private void setBookDetailsComboBoxStyle(boolean isNewStatus) {
+        if (detailsStatusCombo == null) return;
 
-            // Sprawdź czy kliknięto na przycisk użytkownika
-            if (node == userButton || isChildOf(node, userButton)) {
-                return true;
+        detailsStatusCombo.setCellFactory(lv -> new javafx.scene.control.ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (isNewStatus && item.equals(WANT_TO_READ)) {
+                        setStyle("-fx-background-color: #658C4C; -fx-text-fill: white;");
+                    } else {
+                        setStyle("-fx-background-color: #d3d3d3; -fx-text-fill: black;");
+                    }
+                }
             }
+        });
 
-            // Sprawdź czy kliknięto w menu dropdown
-            if (node == userDropdown || isChildOf(node, userDropdown)) {
-                return true;
+        detailsStatusCombo.setButtonCell(new javafx.scene.control.ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (isNewStatus && item.equals(WANT_TO_READ)) {
+                        setStyle("-fx-background-color: #658C4C; -fx-text-fill: white;");
+                    } else {
+                        setStyle("-fx-background-color: #d3d3d3; -fx-text-fill: black;");
+                    }
+                }
             }
-        }
-        return false;
+        });
     }
 
-    private boolean isChildOf(javafx.scene.Node node, javafx.scene.Node parent) {
-        javafx.scene.Node current = node.getParent();
-        while (current != null) {
-            if (current == parent) {
-                return true;
+    private void loadBookDetailsUserRating() {
+        if (currentBookDetails == null || currentUser == null) return;
+
+        try {
+            Map<String, Object> data = new HashMap<>();
+            data.put("username", currentUser.getUsername());
+            data.put("bookId", currentBookDetails.getBookId());
+
+            Request request = new Request(RequestType.GET_USER_RATING, data);
+            Response response = client.sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                Integer rating = (Integer) response.getData();
+                displayBookDetailsUserRating(rating != null ? rating : 0);
+                updateRatingStatusLabel(rating);
+            } else {
+                displayBookDetailsUserRating(0);
+                updateRatingStatusLabel(null);
             }
-            current = current.getParent();
+
+        } catch (Exception e) {
+            System.err.println("Exception loading user rating: " + e.getMessage());
+            displayBookDetailsUserRating(0);
+            updateRatingStatusLabel(null);
         }
-        return false;
+    }
+
+    private void displayBookDetailsUserRating(int rating) {
+        ImageView[] stars = {userStar1, userStar2, userStar3, userStar4, userStar5};
+
+        for (int i = 0; i < stars.length; i++) {
+            if (stars[i] != null) {
+                boolean filled = i < rating;
+                setBookDetailsStarImage(stars[i], filled);
+            }
+        }
+    }
+
+    private void setBookDetailsStarImage(ImageView star, boolean filled) {
+        try {
+            String imagePath = filled ? "/img/star.png" : "/img/star2.png";
+            Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream(imagePath)));
+            star.setImage(image);
+        } catch (Exception e) {
+            System.err.println("Error loading star image: " + e.getMessage());
+        }
+    }
+
+    private void updateRatingStatusLabel(Integer rating) {
+        if (ratingStatusLabel != null) {
+            if (rating == null || rating == 0) {
+                ratingStatusLabel.setText("Not rated yet");
+                if (editDetailsButton != null) {
+                    editDetailsButton.setVisible(false);
+                }
+            } else {
+                ratingStatusLabel.setText("Edit rating/review");
+                if (editDetailsButton != null) {
+                    editDetailsButton.setVisible(true);
+                }
+            }
+        }
     }
 
     /**
@@ -459,3 +872,38 @@ public class MainController implements Initializable {
 }
 
 
+    //EDIT OR ADD REVIEW FROM DETAILS
+    private void openReviewWindow(Book book, String username) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/review.fxml"));
+            AnchorPane reviewPane = loader.load();
+
+            ReviewController controller = loader.getController();
+            controller.setBookData(book, username);
+
+            Stage reviewStage = new Stage();
+            reviewStage.initStyle(StageStyle.UNDECORATED);
+            reviewStage.setScene(new Scene(reviewPane, 480, 360));
+            reviewStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
+            reviewStage.setResizable(false);
+
+            // Po zamknięciu okna review, odśwież dane
+            reviewStage.setOnHidden(e -> {
+                // Odśwież rating status label
+                loadBookDetailsUserRating();
+            });
+
+            reviewStage.show();
+
+        } catch (Exception e) {
+            System.err.println("Error opening review window: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void onEditRatingButtonClicked() {
+        if (currentBookDetails != null && currentUser != null) {
+            openReviewWindow(currentBookDetails, currentUser.getUsername());
+        }
+    }
+}

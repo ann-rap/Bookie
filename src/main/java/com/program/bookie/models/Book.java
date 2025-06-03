@@ -45,16 +45,6 @@ public class Book implements Serializable {
     public String getGenre() { return genre; }
     public int getPublicationYear() { return publicationYear; }
 
-    // Setters
-    public void setBookId(int bookId) { this.bookId = bookId; }
-    public void setTitle(String title) { this.title = title; }
-    public void setAuthor(String author) { this.author = author; }
-    public void setCoverImagePath(String coverImagePath) { this.coverImagePath = coverImagePath; }
-    public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
-    public void setRatingCount(int ratingCount) { this.ratingCount = ratingCount; }
-    public void setDescription(String description) { this.description = description; }
-    public void setGenre(String genre) { this.genre = genre; }
-    public void setPublicationYear(int publicationYear) { this.publicationYear = publicationYear; }
 
     @Override
     public String toString() {
