@@ -2,7 +2,7 @@ package com.program.bookie.models;
 
 
 public class Response implements java.io.Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private ResponseType type;
     private Object data;

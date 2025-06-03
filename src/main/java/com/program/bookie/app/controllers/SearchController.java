@@ -1,5 +1,6 @@
 package com.program.bookie.app.controllers;
 
+import com.program.bookie.client.ImageLoader;
 import com.program.bookie.models.*;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -26,6 +27,7 @@ import java.util.Objects;
 public class SearchController {
 
     private Client client = Client.getInstance();
+    private ImageLoader imageLoader = new ImageLoader(client);
 
     @FXML
     private ImageView bookCover,star1,star2,star3,star4,star5;
@@ -67,7 +69,7 @@ public class SearchController {
         ratingCountLabel.setText(book.getRatingCount() + " ratings");
         publicationYearLabel.setText("published in " + book.getPublicationYear());
 
-        setupBookCover(book);
+        imageLoader.loadBookCover(book, bookCover, ImageLoader.ImageSize.SEARCH_RESULT, true);
         initializeComboBox();
         loadUserRating();
         loadReadingStatus();
@@ -122,37 +124,6 @@ public class SearchController {
         return false;
     }
 
-    private void setupBookCover(Book book) {
-        if (book.getCoverImagePath() != null && !book.getCoverImagePath().isEmpty()) {
-            try {
-                Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/" + book.getCoverImagePath())));
-                bookCover.setImage(image);
-
-                double fitWidth = 150;
-                double fitHeight = 200;
-                bookCover.setFitWidth(fitWidth);
-                bookCover.setFitHeight(fitHeight);
-                bookCover.setPreserveRatio(true);
-                bookCover.setSmooth(true);
-
-                double imageWidth = image.getWidth();
-                double imageHeight = image.getHeight();
-
-                double scaleX = imageWidth / fitWidth;
-                double scaleY = imageHeight / fitHeight;
-                double scale = Math.min(scaleX, scaleY);
-
-                double viewportWidth = fitWidth * scale;
-                double viewportHeight = fitHeight * scale;
-                double viewportX = (imageWidth - viewportWidth) / 2;
-                double viewportY = (imageHeight - viewportHeight) / 2;
-
-                bookCover.setViewport(new Rectangle2D(viewportX, viewportY, viewportWidth, viewportHeight));
-            } catch (Exception e) {
-                System.err.println("Error loading book cover: " + e.getMessage());
-            }
-        }
-    }
 
     private void initializeComboBox() {
         statusComboBox.getItems().clear();

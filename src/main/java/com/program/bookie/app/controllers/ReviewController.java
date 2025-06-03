@@ -1,6 +1,7 @@
 package com.program.bookie.app.controllers;
 
 import com.program.bookie.client.Client;
+import com.program.bookie.client.ImageLoader;
 import com.program.bookie.models.*;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -40,6 +41,7 @@ public class ReviewController implements Initializable {
 
     private int currentRating = 0;
     private Client client = Client.getInstance();
+    private ImageLoader imageLoader = new ImageLoader(client);
     private Book currentBook;
     private String currentUsername;
     private boolean isEditMode = false;
@@ -78,8 +80,9 @@ public class ReviewController implements Initializable {
             authorLabel.setText(book.getAuthor());
         }
 
-        // Ustaw okładkę książki
-        setupBookCover(book);
+        if (bookCoverImageView != null) {
+            imageLoader.loadBookCover(book, bookCoverImageView, ImageLoader.ImageSize.REVIEW_COVER);
+        }
 
         loadExistingReviewOrReset();
     }
