@@ -183,7 +183,7 @@
                                             </Label>
                                             <Label fx:id="highestRatedBookLabel" alignment="CENTER" prefHeight="130.0" prefWidth="270.0" text="Loading..." textFill="WHITE" wrapText="true">
                                                 <font>
-                                                    <Font name="System Bold" size="18.0" />
+                                                    <Font name="System Bold" size="12.0" />
                                                 </font>
                                             </Label>
                                             <Label fx:id="highestRatedRatingLabel" alignment="CENTER" text="★ 5.0" textFill="WHITE">
@@ -203,7 +203,7 @@
                                             </Label>
                                             <Label fx:id="mostPopularBookLabel" alignment="CENTER" prefHeight="130.0" prefWidth="270.0" text="Loading..." textFill="WHITE" wrapText="true">
                                                 <font>
-                                                    <Font name="System Bold" size="18.0" />
+                                                    <Font name="System Bold" size="12.0" />
                                                 </font>
                                             </Label>
                                             <Label fx:id="mostPopularCountLabel" alignment="CENTER" text="0 reviews" textFill="WHITE">
@@ -223,7 +223,7 @@
                                             </Label>
                                             <Label fx:id="communityFavoriteBookLabel" alignment="CENTER" prefHeight="130.0" prefWidth="270.0" text="Loading..." textFill="#615252" wrapText="true">
                                                 <font>
-                                                    <Font name="System Bold" size="18.0" />
+                                                    <Font name="System Bold" size="12.0" />
                                                 </font>
                                             </Label>
                                             <Label fx:id="communityFavoriteRatingLabel" alignment="CENTER" text="★ 0.0" textFill="#615252">

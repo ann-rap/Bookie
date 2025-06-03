@@ -475,65 +475,108 @@ public class DatabaseConnection {
         return quoteService.getRandomQuote();
     }
 
+    /**
+     * Pobiera statystyki uzytkownika
+     */
     public UserStatistics getUserStatistics(String username) throws SQLException {
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username cannot be null or empty");
         }
 
-        String sql = """
-    
-                SELECT 
-        ua.account_created_date,
-        SUM(CASE WHEN ub.reading_status = 'READ' THEN 1 ELSE 0 END) as books_read,
-        SUM(CASE WHEN ub.reading_status = 'READING' THEN 1 ELSE 0 END) as books_currently_reading,
-        SUM(CASE WHEN ub.reading_status = 'TO_READ' THEN 1 ELSE 0 END) as books_want_to_read,
-        COUNT(r.review_id) as reviews_written,
-        COALESCE(AVG(r.rating), 0) as average_rating
-                    FROM user_account ua
-                    LEFT JOIN user_books ub ON ua.account_id = ub.
-                user_id
-    LEFT JOIN reviews r ON ua.account_id = r
-                .user_id
-    WHERE ua
-                .username = ?
-    GROUP BY ua.account_id, ua.
-                account_created_date
-    """;
+        String userInfoSql = """
+        SELECT account_created_date, account_id
+        FROM user_account 
+        WHERE username = ?
+        """;
 
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        LocalDate accountCreatedDate = LocalDate.now();
+        int userId = -1;
+
+        try (PreparedStatement stmt = connection.prepareStatement(userInfoSql)) {
             stmt.setString(1, username.trim());
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    // Pobierz datę utworzenia konta
                     Timestamp createdTimestamp = rs.getTimestamp("account_created_date");
-                    LocalDate accountCreatedDate = createdTimestamp != null ?
+                    accountCreatedDate = createdTimestamp != null ?
                             createdTimestamp.toLocalDateTime().toLocalDate() : LocalDate.now();
-
-                    int booksRead = rs.getInt("books_read");
-                    int booksCurrentlyReading = rs.getInt("books_currently_reading");
-                    int booksWantToRead = rs.getInt("books_want_to_read");
-                    int reviewsWritten = rs.getInt("reviews_written");
-                    double averageRating = rs.getDouble("average_rating");
-
-                    // Oblicz przybliżoną liczbę przeczytanych stron (zakładając średnio 300 stron na książkę)
-                    int totalPagesRead = booksRead * 300;
-
-                    return new UserStatistics(
-                            booksRead,
-                            booksCurrentlyReading,
-                            booksWantToRead,
-                            totalPagesRead,
-                            reviewsWritten,
-                            averageRating,
-                            accountCreatedDate
-                    );
+                    userId = rs.getInt("account_id");
                 } else {
-                    // Jeśli użytkownik nie ma żadnych danych, zwróć puste statystyki
                     return new UserStatistics(0, 0, 0, 0, 0, 0.0, LocalDate.now());
                 }
             }
         }
+
+        String bookStatsSql = """
+        SELECT 
+            reading_status,
+            COUNT(*) as count
+        FROM user_books 
+        WHERE user_id = ?
+        GROUP BY reading_status
+        """;
+
+        int booksRead = 0;
+        int booksCurrentlyReading = 0;
+        int booksWantToRead = 0;
+
+        try (PreparedStatement stmt = connection.prepareStatement(bookStatsSql)) {
+            stmt.setInt(1, userId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String status = rs.getString("reading_status");
+                    int count = rs.getInt("count");
+
+                    switch (status) {
+                        case "READ":
+                            booksRead = count;
+                            break;
+                        case "READING":
+                            booksCurrentlyReading = count;
+                            break;
+                        case "TO_READ":
+                            booksWantToRead = count;
+                            break;
+                    }
+                }
+            }
+        }
+
+        String reviewStatsSql = """
+        SELECT 
+            COUNT(*) as reviews_written,
+            COALESCE(AVG(rating), 0) as average_rating
+        FROM reviews 
+        WHERE user_id = ?
+        """;
+
+        int reviewsWritten = 0;
+        double averageRating = 0.0;
+
+        try (PreparedStatement stmt = connection.prepareStatement(reviewStatsSql)) {
+            stmt.setInt(1, userId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    reviewsWritten = rs.getInt("reviews_written");
+                    averageRating = rs.getDouble("average_rating");
+                }
+            }
+        }
+
+        //Jak na razie zakladamy 300 stron na ksiazke
+        int totalPagesRead = booksRead * 300;
+
+        return new UserStatistics(
+                booksRead,
+                booksCurrentlyReading,
+                booksWantToRead,
+                totalPagesRead,
+                reviewsWritten,
+                averageRating,
+                accountCreatedDate
+        );
     }
 
     /**
