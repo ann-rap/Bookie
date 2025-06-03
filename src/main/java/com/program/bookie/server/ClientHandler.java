@@ -11,18 +11,22 @@ import java.net.SocketException;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import com.program.bookie.models.ImageData;
+import java.io.FileNotFoundException;
 
 public class ClientHandler implements Runnable {
     private Socket clientSocket;
     private ObjectInputStream input;
     private ObjectOutputStream output;
     private DatabaseConnection dbManager;
+    private ImageService imageService;
     private User currentUser;
     private String clientAddress;
 
     public ClientHandler(Socket socket, DatabaseConnection dbManager) {
         this.clientSocket = socket;
         this.dbManager = dbManager;
+        this.imageService = new ImageService();
         this.clientAddress = socket.getRemoteSocketAddress().toString();
         System.out.println("New client connected: " + clientAddress);
     }
@@ -84,6 +88,8 @@ public class ClientHandler implements Runnable {
                 return handleUpdateReadingStatus(request);
             case GET_USER_RATING:
                 return handleGetUserRating(request);
+            case GET_IMAGE:
+                return handleGetImage(request);
             case GET_USER_REVIEW:
                 return handleGetUserReview(request);
             case SAVE_USER_REVIEW:
@@ -309,4 +315,28 @@ public class ClientHandler implements Runnable {
         }
 
     }
+
+    private Response handleGetImage(Request request) {
+        try {
+            String filename = (String) request.getData();
+
+            if (filename == null || filename.trim().isEmpty()) {
+                return new Response(ResponseType.ERROR, "Filename is required");
+            }
+
+            ImageData imageData = imageService.getImage(filename);
+            return new Response(ResponseType.SUCCESS, imageData);
+
+        } catch (FileNotFoundException e) {
+            return new Response(ResponseType.ERROR, "Image not found: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error loading image: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error loading image: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Unexpected error in handleGetImage: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Unexpected error: " + e.getMessage());
+        }
+    }
+
 }
+

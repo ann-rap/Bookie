@@ -29,7 +29,12 @@ import java.util.Objects;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
+
+import java.util.List;
+import java.util.ResourceBundle;
+import java.io.ByteArrayInputStream;
+import com.program.bookie.models.ImageData;
+
 
 public class MainController implements Initializable {
 
@@ -360,6 +365,7 @@ public class MainController implements Initializable {
         coverImageView.setFitWidth(120);
         coverImageView.setFitHeight(160);
         coverImageView.setPreserveRatio(true);
+        loadBookCoverSmart(book, coverImageView);
 
         try {
             String imagePath = book.getCoverImagePath();
@@ -798,6 +804,72 @@ public class MainController implements Initializable {
             }
         }
     }
+
+    /**
+     * Inteligentne ładowanie okładki: najpierw serwer, potem lokalne zasoby
+     */
+    private void loadBookCoverSmart(Book book, ImageView imageView) {
+        // Uruchom w osobnym wątku żeby nie blokować UI
+        new Thread(() -> {
+            try {
+                ImageData imageData = null;
+
+                String imagePath = book.getCoverImagePath();
+                if (imagePath != null && !imagePath.isEmpty()) {
+                    System.out.println("Trying to load from server: " + imagePath);
+                    imageData = client.getImage(imagePath);
+                }
+
+                final ImageData finalImageData = imageData;
+                Platform.runLater(() -> {
+                    if (finalImageData != null && finalImageData.getImageBytes() != null) {
+                        try {
+                            ByteArrayInputStream bis = new ByteArrayInputStream(finalImageData.getImageBytes());
+                            Image coverImage = new Image(bis);
+                            imageView.setImage(coverImage);
+                            System.out.println("✅ Loaded from SERVER: " + finalImageData.getFilename());
+                        } catch (Exception e) {
+                            System.err.println("Error creating image from server data: " + e.getMessage());
+                            loadLocalImage(book, imageView);
+                        }
+                    } else {
+                        // Fallback - spróbuj lokalnie
+                        loadLocalImage(book, imageView);
+                    }
+                });
+
+            } catch (Exception e) {
+                System.err.println("Error loading from server: " + e.getMessage());
+                Platform.runLater(() -> loadLocalImage(book, imageView));
+            }
+        }).start();
+    }
+
+    /**
+     * Ładowanie z lokalnych zasobów (fallback)
+     */
+    private void loadLocalImage(Book book, ImageView imageView) {
+        try {
+            String imagePath = book.getCoverImagePath();
+            if (imagePath != null && !imagePath.isEmpty()) {
+                String fullResourcePath = "/img/" + imagePath;
+                URL imageUrl = getClass().getResource(fullResourcePath);
+                if (imageUrl != null) {
+                    Image coverImage = new Image(imageUrl.toString());
+                    imageView.setImage(coverImage);
+                    System.out.println("✅ Loaded LOCALLY: " + fullResourcePath);
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading local image: " + e.getMessage());
+        }
+
+        // Ostateczny fallback
+        setDefaultCoverImage(imageView);
+        System.out.println("🔄 Using DEFAULT image");
+    }
+}
 
 
     //EDIT OR ADD REVIEW FROM DETAILS
