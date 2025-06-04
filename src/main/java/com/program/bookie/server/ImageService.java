@@ -2,20 +2,27 @@ package com.program.bookie.server;
 
 import com.program.bookie.models.ImageData;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ImageService {
 
     // Folder gdzie przechowujemy obrazy na serwerze
     private static final String IMAGES_DIRECTORY = "server_images";
     private static final String COVERS_DIRECTORY = IMAGES_DIRECTORY + "/covers";
+    private static final String THUMBNAILS_DIRECTORY = IMAGES_DIRECTORY + "/thumbnails";
 
-    // Maksymalny rozmiar pliku (5MB)
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+    // Cache w pamięci dla często używanych obrazów
+    private final ConcurrentHashMap<String, ImageData> imageCache = new ConcurrentHashMap<>();
+    private static final int MAX_CACHE_SIZE = 50;
 
     public ImageService() {
         createDirectoriesIfNotExist();
@@ -25,98 +32,79 @@ public class ImageService {
         try {
             Files.createDirectories(Paths.get(IMAGES_DIRECTORY));
             Files.createDirectories(Paths.get(COVERS_DIRECTORY));
+            Files.createDirectories(Paths.get(THUMBNAILS_DIRECTORY));
             System.out.println("Image directories created/verified: " + IMAGES_DIRECTORY);
         } catch (IOException e) {
             System.err.println("Error creating image directories: " + e.getMessage());
         }
     }
 
+
     /**
-     * Zapisuje obraz na serwerze i zwraca nazwę pliku
+     * Pobiera obraz z serwera (preferuje thumbnail)
      */
-    public String saveImage(ImageData imageData) throws IOException {
-        if (imageData.getImageBytes() == null || imageData.getImageBytes().length == 0) {
-            throw new IllegalArgumentException("Image data is empty");
-        }
-
-        if (imageData.getImageBytes().length > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File too large. Max size: " + MAX_FILE_SIZE + " bytes");
-        }
-
-        // Generuj unikalną nazwę pliku
-        String extension = getFileExtension(imageData.getFilename());
-        String uniqueFilename = UUID.randomUUID().toString() + extension;
-
-        Path filePath = Paths.get(COVERS_DIRECTORY, uniqueFilename);
-
-        try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
-            fos.write(imageData.getImageBytes());
-        }
-
-        System.out.println("Image saved: " + filePath);
-        return uniqueFilename;
+    public ImageData getImage(String filename) throws IOException {
+        return getImage(filename, true);
     }
 
     /**
      * Pobiera obraz z serwera
+     * @param filename nazwa pliku
+     * @param preferThumbnail czy preferować thumbnail (mniejszy rozmiar)
      */
-    public ImageData getImage(String filename) throws IOException {
+    public ImageData getImage(String filename, boolean preferThumbnail) throws IOException {
         if (filename == null || filename.trim().isEmpty()) {
             throw new IllegalArgumentException("Filename cannot be empty");
         }
 
-        // Usuń "covers/" z początku jeśli istnieje (dla kompatybilności z bazą)
+        // Sprawdź cache
+        String cacheKey = filename + (preferThumbnail ? "_thumb" : "_full");
+        ImageData cachedImage = imageCache.get(cacheKey);
+        if (cachedImage != null) {
+            System.out.println("Image loaded from cache: " + filename);
+            return cachedImage;
+        }
+
+        // Usuń "covers/" z początku jeśli istnieje
         String cleanFilename = filename.startsWith("covers/") ?
                 filename.substring(7) : filename;
 
-        Path filePath = Paths.get(COVERS_DIRECTORY, cleanFilename);
+        Path imagePath;
+        String contentType;
 
-        if (!Files.exists(filePath)) {
+        if (preferThumbnail) {
+            // Spróbuj najpierw thumbnail
+            imagePath = Paths.get(THUMBNAILS_DIRECTORY, cleanFilename);
+            if (!Files.exists(imagePath)) {
+                // Jeśli thumbnail nie istnieje, użyj oryginału
+                imagePath = Paths.get(COVERS_DIRECTORY, cleanFilename);
+            }
+        } else {
+            // Użyj oryginału
+            imagePath = Paths.get(COVERS_DIRECTORY, cleanFilename);
+        }
+
+        if (!Files.exists(imagePath)) {
             throw new FileNotFoundException("Image not found: " + cleanFilename);
         }
 
-        byte[] imageBytes = Files.readAllBytes(filePath);
-        String contentType = determineContentType(cleanFilename);
+        byte[] imageBytes = Files.readAllBytes(imagePath);
+        contentType = determineContentType(cleanFilename);
 
-        return new ImageData(cleanFilename, imageBytes, contentType);
-    }
+        ImageData imageData = new ImageData(cleanFilename, imageBytes, contentType);
 
-    /**
-     * Sprawdza czy obraz istnieje
-     */
-    public boolean imageExists(String filename) {
-        if (filename == null || filename.trim().isEmpty()) {
-            return false;
+        // Dodaj do cache (jeśli nie jest za duży)
+        if (imageCache.size() < MAX_CACHE_SIZE) {
+            imageCache.put(cacheKey, imageData);
         }
 
-        String cleanFilename = filename.startsWith("covers/") ?
-                filename.substring(7) : filename;
+        System.out.println("Image loaded from disk: " + imagePath +
+                " (size: " + imageBytes.length + " bytes)");
 
-        Path filePath = Paths.get(COVERS_DIRECTORY, cleanFilename);
-        return Files.exists(filePath);
+        return imageData;
     }
 
-    /**
-     * Konwertuje plik lokalny na ImageData
-     */
-    public static ImageData fileToImageData(File file) throws IOException {
-        if (!file.exists() || !file.isFile()) {
-            throw new FileNotFoundException("File not found: " + file.getAbsolutePath());
-        }
 
-        byte[] imageBytes = Files.readAllBytes(file.toPath());
-        String filename = file.getName();
-        String contentType = determineContentTypeStatic(filename);
-
-        return new ImageData(filename, imageBytes, contentType);
-    }
-
-    private String getFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return ".jpg";
-        }
-        return filename.substring(filename.lastIndexOf('.'));
-    }
 
     private String determineContentType(String filename) {
         if (filename == null) {
@@ -135,20 +123,4 @@ public class ImageService {
         }
     }
 
-    private static String determineContentTypeStatic(String filename) {
-        if (filename == null) {
-            return "image/jpeg";
-        }
-
-        String lower = filename.toLowerCase();
-        if (lower.endsWith(".png")) {
-            return "image/png";
-        } else if (lower.endsWith(".gif")) {
-            return "image/gif";
-        } else if (lower.endsWith(".bmp")) {
-            return "image/bmp";
-        } else {
-            return "image/jpeg";
-        }
-    }
 }
