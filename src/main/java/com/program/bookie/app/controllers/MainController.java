@@ -84,6 +84,9 @@ public class MainController implements Initializable {
     @FXML
     private Label quoteLabel;
 
+    @FXML
+    private VBox reviewsContainer;
+
     private boolean isUserMenuVisible = false;
 
     private Client client = Client.getInstance();
@@ -240,6 +243,7 @@ public class MainController implements Initializable {
         return false;
     }
 
+    //CYTATY
     private void loadRandomQuote() {
         try {
             Request request = new Request(RequestType.GET_RANDOM_QUOTE, null);
@@ -557,6 +561,7 @@ public class MainController implements Initializable {
 
 
         updateStarRatingD(book.getAverageRating());
+        loadBookReviews();
 
         //user status
         initializeBookDetailsComboBox();
@@ -610,6 +615,53 @@ public class MainController implements Initializable {
         }
 
         System.out.println("Updated star rating to: " + rating + " (Full stars: " + fullStars + ", Partial: " + partialStar + ")");
+    }
+
+    /**
+     * Ładuje reviews dla aktualnie wyświetlanej książki
+     */
+    private void loadBookReviews() {
+        if (currentBookDetails == null) return;
+
+        try {
+            Request request = new Request(RequestType.GET_BOOK_REVIEWS, currentBookDetails.getBookId());
+            Response response = client.sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                @SuppressWarnings("unchecked")
+                List<Review> reviews = (List<Review>) response.getData();
+                displayReviews(reviews);
+            } else {
+                System.err.println("Error loading reviews: " + response.getData());
+            }
+
+        } catch (Exception e) {
+            System.err.println("Exception loading reviews: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Wyświetla reviews w kontenerze
+     */
+    private void displayReviews(List<Review> reviews) {
+        if (reviewsContainer == null) return;
+
+        reviewsContainer.getChildren().clear();
+
+        for (Review review : reviews) {
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/reviewItem.fxml"));
+                VBox reviewItem = loader.load();
+
+                ReviewItemController controller = loader.getController();
+                controller.setReviewData(review, currentUser.getUsername());
+
+                reviewsContainer.getChildren().add(reviewItem);
+
+            } catch (Exception e) {
+                System.err.println("Error loading review item: " + e.getMessage());
+            }
+        }
     }
 
 

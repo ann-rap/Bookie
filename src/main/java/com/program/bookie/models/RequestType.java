@@ -13,6 +13,9 @@ public enum RequestType {
     GET_USER_REVIEW,
     SAVE_USER_REVIEW,
     GET_RANDOM_QUOTE,
+    GET_BOOK_REVIEWS,
+    GET_REVIEW_COMMENTS,
+    ADD_COMMENT,
     DISCONNECT
 
 };

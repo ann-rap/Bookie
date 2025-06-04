@@ -1,6 +1,7 @@
 package com.program.bookie.models;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 public class Review implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -12,6 +13,9 @@ public class Review implements Serializable {
     private String reviewText;
     private boolean isSpoiler;
     private String username;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Review() {}
 
@@ -30,6 +34,16 @@ public class Review implements Serializable {
         this.reviewText = reviewText;
         this.isSpoiler = isSpoiler;
     }
+
+    public boolean wasEdited() {
+        return updatedAt != null && !updatedAt.equals(createdAt);
+    }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     // Getters and Setters
     public int getReviewId() { return reviewId; }
