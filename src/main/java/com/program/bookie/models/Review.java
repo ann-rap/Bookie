@@ -2,6 +2,7 @@ package com.program.bookie.models;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class Review implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -38,6 +39,20 @@ public class Review implements Serializable {
     public boolean wasEdited() {
         return updatedAt != null && !updatedAt.equals(createdAt);
     }
+    public String getFormattedUpdatedDate() {
+        if (updatedAt == null) return null;
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy");
+        return updatedAt.format(formatter);
+    }
+
+    public String getFormattedCreatedDate() {
+        if (createdAt == null) return "Unknown date";
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy");
+        return createdAt.format(formatter);
+    }
+
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -624,6 +624,7 @@ public class MainController implements Initializable {
         if (currentBookDetails == null) return;
 
         try {
+            System.out.println("Proba pobrania recenzji");
             Request request = new Request(RequestType.GET_BOOK_REVIEWS, currentBookDetails.getBookId());
             Response response = client.sendRequest(request);
 
@@ -647,6 +648,7 @@ public class MainController implements Initializable {
         if (reviewsContainer == null) return;
 
         reviewsContainer.getChildren().clear();
+        System.out.println("Displaying reviews: " + reviews.size());
 
         for (Review review : reviews) {
             try {

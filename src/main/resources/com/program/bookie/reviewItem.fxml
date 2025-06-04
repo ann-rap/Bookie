@@ -6,44 +6,46 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox fx:id="reviewContainer" prefWidth="580.0" spacing="10" style="-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-padding: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.ReviewItemController">
+<VBox fx:id="reviewContainer" prefWidth="880.0" spacing="8" style="-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-padding: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.ReviewItemController">
     <children>
-        <!-- Header with user info and rating -->
-        <HBox alignment="CENTER_LEFT" spacing="15">
+        <!-- Kompaktowy header with user info and rating -->
+        <HBox alignment="CENTER_LEFT" spacing="12">
             <children>
                 <Label fx:id="usernameLabel" style="-fx-font-weight: bold;" text="Username">
                     <font>
-                        <Font size="16.0" />
+                        <Font size="15.0" />
                     </font>
                 </Label>
 
-                <!-- Star rating -->
-                <HBox spacing="3">
+                <!-- Kompaktowe gwiazdki -->
+                <HBox spacing="2">
                     <children>
-                        <ImageView fx:id="star1" fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                        <ImageView fx:id="star1" fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true">
                             <image>
                                 <Image url="@../../../img/star2.png" />
                             </image>
                         </ImageView>
-                        <ImageView fx:id="star2" fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                        <ImageView fx:id="star2" fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true">
                             <image>
                                 <Image url="@../../../img/star2.png" />
                             </image>
                         </ImageView>
-                        <ImageView fx:id="star3" fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                        <ImageView fx:id="star3" fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true">
                             <image>
                                 <Image url="@../../../img/star2.png" />
                             </image>
                         </ImageView>
-                        <ImageView fx:id="star4" fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                        <ImageView fx:id="star4" fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true">
                             <image>
                                 <Image url="@../../../img/star2.png" />
                             </image>
                         </ImageView>
-                        <ImageView fx:id="star5" fitHeight="20.0" fitWidth="20.0" pickOnBounds="true" preserveRatio="true">
+                        <ImageView fx:id="star5" fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true">
                             <image>
                                 <Image url="@../../../img/star2.png" />
                             </image>
@@ -51,64 +53,81 @@
                     </children>
                 </HBox>
 
-                <Label fx:id="dateLabel" style="-fx-text-fill: #666;" text="Jan 15, 2024">
-                    <font>
-                        <Font size="12.0" />
-                    </font>
-                </Label>
+                <!-- Spacer żeby data była po prawej -->
+                <javafx.scene.layout.Region HBox.hgrow="ALWAYS" />
 
-                <Label fx:id="editedLabel" style="-fx-text-fill: #888; -fx-font-style: italic;" text="(edited)" visible="false">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                </Label>
+                <!-- Data i edited label w jednej linii -->
+                <HBox alignment="CENTER_RIGHT" spacing="5">
+                    <children>
+                        <Label fx:id="dateLabel" style="-fx-text-fill: #666;" text="Jan 15, 2024">
+                            <font>
+                                <Font size="11.0" />
+                            </font>
+                        </Label>
+                        <Label fx:id="editedLabel" style="-fx-text-fill: #888; -fx-font-style: italic;" text="(edited)" visible="false">
+                            <font>
+                                <Font size="10.0" />
+                            </font>
+                        </Label>
+                    </children>
+                </HBox>
             </children>
         </HBox>
 
-        <!-- Review content -->
-        <VBox fx:id="reviewContentContainer" spacing="8">
+        <!-- Kompaktowy review content -->
+        <StackPane fx:id="reviewContentContainer">
             <children>
-                <!-- Spoiler warning (shown when review is spoiler and not revealed) -->
-                <VBox fx:id="spoilerWarning" alignment="CENTER" spacing="8" style="-fx-background-color: #fff3cd; -fx-background-radius: 5; -fx-padding: 15; -fx-border-color: #ffeaa7; -fx-border-radius: 5;" visible="false">
+                <!-- Spoiler warning -->
+                <VBox fx:id="spoilerWarning" alignment="CENTER" spacing="6" style="-fx-background-color: #fff3cd; -fx-background-radius: 5; -fx-padding: 8; -fx-border-color: #ffeaa7; -fx-border-radius: 5;" visible="false">
                     <children>
                         <Label style="-fx-text-fill: #856404; -fx-font-weight: bold;" text="⚠️ Review contains spoilers">
                             <font>
-                                <Font size="14.0" />
+                                <Font size="13.0" />
                             </font>
                         </Label>
-                        <Button fx:id="revealSpoilerButton" mnemonicParsing="false" onAction="#onRevealSpoilerClicked" style="-fx-background-color: #ffc107; -fx-text-fill: white; -fx-background-radius: 5;" text="Click here to reveal" />
+                        <Button fx:id="revealSpoilerButton" mnemonicParsing="false" onAction="#onRevealSpoilerClicked" style="-fx-background-color: #ffc107; -fx-text-fill: white; -fx-background-radius: 5; -fx-padding: 4 12;" text="Click here to reveal">
+                            <font>
+                                <Font size="12.0" />
+                            </font>
+                        </Button>
                     </children>
                 </VBox>
 
-                <!-- Actual review text -->
-                <Label fx:id="reviewTextLabel" style="-fx-wrap-text: true;" text="Blabla text" wrapText="true">
-                    <font>
-                        <Font size="14.0" />
-                    </font>
-                </Label>
-            </children>
-        </VBox>
-
-        <!-- Comments section -->
-        <VBox fx:id="commentsSection" spacing="8">
-            <children>
-                <!-- Comments toggle button -->
-                <Button fx:id="commentsToggleButton" alignment="CENTER_LEFT" mnemonicParsing="false" onAction="#onToggleCommentsClicked" style="-fx-background-color: transparent; -fx-text-fill: #007bff; -fx-underline: true;" text="💬 Show comments (0)">
+                <!-- Review text - nakłada się na to samo miejsce co spoiler -->
+                <Label fx:id="reviewTextLabel" alignment="TOP_LEFT" prefWidth="850.0" style="-fx-wrap-text: true; -fx-line-spacing: 1px;" text="Review text here..." wrapText="true">
                     <font>
                         <Font size="13.0" />
                     </font>
+                </Label>
+            </children>
+        </StackPane>
+
+
+
+        <!-- Kompaktowa comments section -->
+        <VBox fx:id="commentsSection" spacing="5">
+            <children>
+                <!-- Kompaktowy comments toggle button -->
+                <Button fx:id="commentsToggleButton" alignment="CENTER_LEFT" mnemonicParsing="false" onAction="#onToggleCommentsClicked" style="-fx-background-color: transparent; -fx-text-fill: #007bff; -fx-underline: true; -fx-padding: 2 0;" text="💬 Show comments (0)">
+                    <font>
+                        <Font size="12.0" />
+                    </font>
                 </Button>
 
-                <!-- Comments container (initially hidden) -->
-                <VBox fx:id="commentsContainer" spacing="6" style="-fx-background-color: #f1f3f4; -fx-background-radius: 5; -fx-padding: 10;" visible="false">
+                <!-- Kompaktowy comments container -->
+                <VBox fx:id="commentsContainer" spacing="4" style="-fx-background-color: #f1f3f4; -fx-background-radius: 5; -fx-padding: 8;" visible="false">
                     <children>
                         <!-- Comments will be added here dynamically -->
 
-                        <!-- Add comment section -->
-                        <HBox fx:id="addCommentSection" alignment="CENTER_LEFT" spacing="8">
+                        <!-- Kompaktowy add comment section -->
+                        <HBox fx:id="addCommentSection" alignment="CENTER_LEFT" spacing="6">
                             <children>
-                                <TextField fx:id="commentTextField" prefHeight="30.0" prefWidth="400.0" promptText="Add a comment..." style="-fx-background-radius: 15; -fx-padding: 5 10;" />
-                                <Button fx:id="addCommentButton" mnemonicParsing="false" onAction="#onAddCommentClicked" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-background-radius: 15; -fx-padding: 5 15;" text="Post" />
+                                <TextField fx:id="commentTextField" prefHeight="26.0" prefWidth="350.0" promptText="Add a comment..." style="-fx-background-radius: 13; -fx-padding: 4 10; -fx-font-size: 12;" />
+                                <Button fx:id="addCommentButton" mnemonicParsing="false" onAction="#onAddCommentClicked" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-background-radius: 13; -fx-padding: 4 12;" text="Post">
+                                    <font>
+                                        <Font size="12.0" />
+                                    </font>
+                                </Button>
                             </children>
                         </HBox>
                     </children>
