@@ -30,7 +30,8 @@ import java.util.*;
 
 import java.io.IOException;
 import java.net.URL;
-
+import java.util.*;
+import com.program.bookie.app.controllers.StatisticsController;
 import java.io.ByteArrayInputStream;
 import com.program.bookie.models.ImageData;
 
@@ -85,6 +86,8 @@ public class MainController implements Initializable {
     private Label quoteLabel;
 
     @FXML
+
+    private Pane statisticsPane;
     private VBox reviewsContainer;
 
     private boolean isUserMenuVisible = false;
@@ -213,8 +216,16 @@ public class MainController implements Initializable {
 
 
     private void hideUserMenu() {
-        isUserMenuVisible = false;
-        userDropdown.setVisible(false);
+        if (isUserMenuVisible) {
+            isUserMenuVisible = false;
+            userDropdown.setVisible(false);
+        }
+    }
+
+    private void clearSearchField() {
+        if (searchField != null) {
+            searchField.clear();
+        }
     }
 
     // Sprawdź czy kliknięto na przycisk użytkownika lub menu
@@ -389,7 +400,7 @@ public class MainController implements Initializable {
         coverImageView.setFitWidth(120);
         coverImageView.setFitHeight(160);
         coverImageView.setPreserveRatio(true);
-        coverImageView.setSmooth(true); // Włącz antyaliasing
+        coverImageView.setSmooth(true);
 
         // nowe ladowanie
         loadBookCoverSmart(book, coverImageView);
@@ -467,6 +478,8 @@ public class MainController implements Initializable {
     }
 
     public void onSearchClicked() {
+        hideUserMenu();
+
         String searchTerm = searchField.getText();
         if (searchTerm == null || searchTerm.isBlank()) return;
 
@@ -482,6 +495,7 @@ public class MainController implements Initializable {
                 searchPane.setVisible(true);
                 homePane.setVisible(false);
                 bookDetailsPane.setVisible(false);
+                statisticsPane.setVisible(false);
             } else {
                 System.err.println("Search failed: " + response.getData());
             }
@@ -491,15 +505,22 @@ public class MainController implements Initializable {
     }
 
     public void onHomeClicked() {
+        hideUserMenu();
+        clearSearchField();
+
         loadTopRatedBooks();
         loadRandomQuote();
         homePane.setVisible(true);
         searchPane.setVisible(false);
         bookDetailsPane.setVisible(false);
+        statisticsPane.setVisible(false);
     }
 
     //BOOK DETAILS
     public void showBookDetails(Book book) {
+        hideUserMenu();
+        clearSearchField();
+
         if (book == null) return;
 
         loadRandomQuote();
@@ -566,6 +587,11 @@ public class MainController implements Initializable {
             } else {
                 setDefaultDetailsCoverImage();
             }
+
+            homePane.setVisible(false);
+            searchPane.setVisible(false);
+            bookDetailsPane.setVisible(true);
+            statisticsPane.setVisible(false);
         }
 
 
@@ -968,4 +994,73 @@ public class MainController implements Initializable {
             openReviewWindow(currentBookDetails, currentUser.getUsername());
         }
     }
+
+    public void onStatisticsClicked() {
+        hideUserMenu();
+        clearSearchField();
+
+        loadStatisticsPane();
+        loadRandomQuote();
+        statisticsPane.setVisible(true);
+        homePane.setVisible(false);
+        searchPane.setVisible(false);
+        bookDetailsPane.setVisible(false);
+    }
+
+    private void loadStatisticsPane() {
+        System.out.println("Loading statistics pane...");
+
+        if (statisticsPane == null) {
+            System.err.println("Statistics pane is null!");
+            return;
+        }
+
+        System.out.println("Statistics pane found, attempting to load FXML...");
+
+        try {
+            java.net.URL fxmlUrl = getClass().getResource("/com/program/bookie/statistics.fxml");
+            if (fxmlUrl == null) {
+                System.err.println("FXML file not found: /com/program/bookie/statistics.fxml");
+                return;
+            }
+
+            System.out.println("FXML file found at: " + fxmlUrl);
+
+            FXMLLoader loader = new FXMLLoader(fxmlUrl);
+            Parent statisticsContent = loader.load();
+
+            System.out.println("FXML loaded successfully");
+
+            StatisticsController statisticsController = loader.getController();
+            if (statisticsController == null) {
+                System.err.println("Statistics controller is null!");
+                return;
+            }
+
+            System.out.println("Statistics controller found");
+
+            statisticsController.setCurrentUser(currentUser);
+
+            statisticsPane.getChildren().clear();
+            statisticsPane.getChildren().add(statisticsContent);
+
+            System.out.println("Statistics content added to pane successfully");
+
+        } catch (Exception e) {
+            System.err.println("Error loading statistics pane: " + e.getMessage());
+            e.printStackTrace();
+
+            javafx.scene.control.Label errorLabel = new javafx.scene.control.Label("Error loading statistics: " + e.getMessage());
+            statisticsPane.getChildren().clear();
+            statisticsPane.getChildren().add(errorLabel);
+        }
+    }
+
+    public void onShelfClicked() {
+        hideUserMenu();
+        clearSearchField();
+
+        System.out.println("Shelves clicked - funkcja do zaimplementowania w przyszłości");
+    }
+
 }

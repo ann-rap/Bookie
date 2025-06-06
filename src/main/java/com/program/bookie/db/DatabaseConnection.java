@@ -6,8 +6,10 @@ import com.program.bookie.server.QuoteService;
 
 import java.sql.*;
 import java.time.LocalDate;
+import com.program.bookie.models.UserStatistics;
 import java.util.ArrayList;
 import java.util.List;
+import com.program.bookie.models.ReadingInsights;
 
 
 public class DatabaseConnection {
@@ -70,7 +72,7 @@ public class DatabaseConnection {
             return ResponseType.INFO;
         }
 
-        String query = "INSERT INTO user_account (firstname, lastname, username, password) VALUES (?, ?, ?, ?)";
+        String query = "INSERT INTO user_account (firstname, lastname, username, password, account_created_date) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setString(1, firstname);
             stmt.setString(2, lastname);
@@ -473,6 +475,280 @@ public class DatabaseConnection {
         return quoteService.getRandomQuote();
     }
 
+    /**
+     * Pobiera statystyki uzytkownika
+     */
+    public UserStatistics getUserStatistics(String username) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        String userInfoSql = """
+        SELECT account_created_date, account_id
+        FROM user_account 
+        WHERE username = ?
+        """;
+
+        LocalDate accountCreatedDate = LocalDate.now();
+        int userId = -1;
+
+        try (PreparedStatement stmt = connection.prepareStatement(userInfoSql)) {
+            stmt.setString(1, username.trim());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Timestamp createdTimestamp = rs.getTimestamp("account_created_date");
+                    accountCreatedDate = createdTimestamp != null ?
+                            createdTimestamp.toLocalDateTime().toLocalDate() : LocalDate.now();
+                    userId = rs.getInt("account_id");
+                } else {
+                    return new UserStatistics(0, 0, 0, 0, 0, 0.0, LocalDate.now());
+                }
+            }
+        }
+
+        String bookStatsSql = """
+        SELECT 
+            reading_status,
+            COUNT(*) as count
+        FROM user_books 
+        WHERE user_id = ?
+        GROUP BY reading_status
+        """;
+
+        int booksRead = 0;
+        int booksCurrentlyReading = 0;
+        int booksWantToRead = 0;
+
+        try (PreparedStatement stmt = connection.prepareStatement(bookStatsSql)) {
+            stmt.setInt(1, userId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String status = rs.getString("reading_status");
+                    int count = rs.getInt("count");
+
+                    switch (status) {
+                        case "READ":
+                            booksRead = count;
+                            break;
+                        case "READING":
+                            booksCurrentlyReading = count;
+                            break;
+                        case "TO_READ":
+                            booksWantToRead = count;
+                            break;
+                    }
+                }
+            }
+        }
+
+        String reviewStatsSql = """
+        SELECT 
+            COUNT(*) as reviews_written,
+            COALESCE(AVG(rating), 0) as average_rating
+        FROM reviews 
+        WHERE user_id = ?
+        """;
+
+        int reviewsWritten = 0;
+        double averageRating = 0.0;
+
+        try (PreparedStatement stmt = connection.prepareStatement(reviewStatsSql)) {
+            stmt.setInt(1, userId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    reviewsWritten = rs.getInt("reviews_written");
+                    averageRating = rs.getDouble("average_rating");
+                }
+            }
+        }
+
+        //Jak na razie zakladamy 300 stron na ksiazke
+        int totalPagesRead = booksRead * 300;
+
+        return new UserStatistics(
+                booksRead,
+                booksCurrentlyReading,
+                booksWantToRead,
+                totalPagesRead,
+                reviewsWritten,
+                averageRating,
+                accountCreatedDate
+        );
+    }
+
+    /**
+     * Pobiera książkę z najwyższą oceną użytkownika
+     */
+    public Book getUserHighestRatedBook(String username) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        String sql = """
+    SELECT b.book_id, b.title, b.author, b.cover_image, 
+           COALESCE(AVG(r2.rating), 0) as avg_rating,
+           COUNT(r2.rating) as rating_count,
+           b.description, b.genre, b.publication_year,
+           r.rating as user_rating
+    FROM reviews r
+    INNER JOIN user_account ua ON r.user_id = ua.account_id
+    INNER JOIN books b ON r.book_id = b.book_id
+    LEFT JOIN reviews r2 ON b.book_id = r2.book_id
+    WHERE ua.username = ?
+    GROUP BY b.book_id, b.title, b.author, b.cover_image, 
+             b.description, b.genre, b.publication_year, r.rating
+    ORDER BY r.rating DESC, b.title ASC
+    LIMIT 1
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username.trim());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Book(
+                            rs.getInt("book_id"),
+                            rs.getString("title"),
+                            rs.getString("author"),
+                            rs.getString("cover_image"),
+                            rs.getDouble("avg_rating"),
+                            rs.getInt("rating_count"),
+                            rs.getString("description"),
+                            rs.getString("genre"),
+                            rs.getInt("publication_year")
+                    );
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Pobiera ocenę użytkownika dla jego najwyżej ocenionej książki
+     */
+    public Integer getUserHighestRating(String username) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        String sql = """
+    SELECT MAX(r.rating) as highest_rating
+    FROM reviews r
+    INNER JOIN user_account ua ON r.user_id = ua.account_id
+    WHERE ua.username = ?
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username.trim());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("highest_rating");
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Pobiera książkę z największą liczbą recenzji (Most Popular)
+     */
+    public Book getMostPopularBook() throws SQLException {
+        String sql = """
+    SELECT b.book_id, b.title, b.author, b.cover_image, 
+           COALESCE(AVG(r.rating), 0) as avg_rating,
+           COUNT(r.rating) as rating_count,
+           b.description, b.genre, b.publication_year
+    FROM books b 
+    LEFT JOIN reviews r ON b.book_id = r.book_id 
+    GROUP BY b.book_id, b.title, b.author, b.cover_image, 
+             b.description, b.genre, b.publication_year
+    HAVING COUNT(r.rating) > 0
+    ORDER BY rating_count DESC, avg_rating DESC
+    LIMIT 1
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Book(
+                            rs.getInt("book_id"),
+                            rs.getString("title"),
+                            rs.getString("author"),
+                            rs.getString("cover_image"),
+                            rs.getDouble("avg_rating"),
+                            rs.getInt("rating_count"),
+                            rs.getString("description"),
+                            rs.getString("genre"),
+                            rs.getInt("publication_year")
+                    );
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Pobiera książkę z najwyższą średnią oceną (Community Favorite)
+     */
+    public Book getCommunityFavoriteBook() throws SQLException {
+        String sql = """
+    SELECT b.book_id, b.title, b.author, b.cover_image, 
+           COALESCE(AVG(r.rating), 0) as avg_rating,
+           COUNT(r.rating) as rating_count,
+           b.description, b.genre, b.publication_year
+    FROM books b 
+    LEFT JOIN reviews r ON b.book_id = r.book_id 
+    GROUP BY b.book_id, b.title, b.author, b.cover_image, 
+             b.description, b.genre, b.publication_year
+    HAVING COUNT(r.rating) >= 3
+    ORDER BY avg_rating DESC, rating_count DESC
+    LIMIT 1
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Book(
+                            rs.getInt("book_id"),
+                            rs.getString("title"),
+                            rs.getString("author"),
+                            rs.getString("cover_image"),
+                            rs.getDouble("avg_rating"),
+                            rs.getInt("rating_count"),
+                            rs.getString("description"),
+                            rs.getString("genre"),
+                            rs.getInt("publication_year")
+                    );
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public ReadingInsights getReadingInsights(String username) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        ReadingInsights insights = new ReadingInsights();
+
+        insights.setUserHighestRatedBook(getUserHighestRatedBook(username));
+        insights.setUserHighestRating(getUserHighestRating(username));
+
+        insights.setMostPopularBook(getMostPopularBook());
+
+        insights.setCommunityFavoriteBook(getCommunityFavoriteBook());
+
+        return insights;
+    }
 
     //Zamykanie polaczenia
     public void closeConnection() {
