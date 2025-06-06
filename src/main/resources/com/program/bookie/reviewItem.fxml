@@ -78,14 +78,14 @@
         <StackPane fx:id="reviewContentContainer">
             <children>
                 <!-- Spoiler warning -->
-                <VBox fx:id="spoilerWarning" alignment="CENTER" spacing="6" style="-fx-background-color: #fff3cd; -fx-background-radius: 5; -fx-padding: 8; -fx-border-color: #ffeaa7; -fx-border-radius: 5;" visible="false">
+                <VBox fx:id="spoilerWarning" alignment="CENTER" spacing="6" style="-fx-background-color: #F5F3E2; -fx-background-radius: 5; -fx-padding: 8; -fx-border-radius: 5;" visible="false">
                     <children>
-                        <Label style="-fx-text-fill: #856404; -fx-font-weight: bold;" text="⚠️ Review contains spoilers">
+                        <Label style="-fx-text-fill: #B3AF9A; -fx-font-weight: bold;" text="⚠️ Review contains spoilers">
                             <font>
                                 <Font size="13.0" />
                             </font>
                         </Label>
-                        <Button fx:id="revealSpoilerButton" mnemonicParsing="false" onAction="#onRevealSpoilerClicked" style="-fx-background-color: #ffc107; -fx-text-fill: white; -fx-background-radius: 5; -fx-padding: 4 12;" text="Click here to reveal">
+                        <Button fx:id="revealSpoilerButton" mnemonicParsing="false" onAction="#onRevealSpoilerClicked" style="-fx-background-color: #CFCBB3; -fx-text-fill: white; -fx-background-radius: 5; -fx-padding: 4 12;" text="Click here to reveal">
                             <font>
                                 <Font size="13.0" />
                             </font>
