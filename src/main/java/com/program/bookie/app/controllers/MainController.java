@@ -102,6 +102,7 @@ public class MainController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        client.clearImageCache();
         setHover(homeButton);
         setHover(statisticsButton);
         setHover(shelfButton);
@@ -251,15 +252,23 @@ public class MainController implements Initializable {
             Request request = new Request(RequestType.GET_RANDOM_QUOTE, null);
             Response response = client.sendRequest(request);
 
+
+            System.out.println("Response type: " + response.getType());
+            System.out.println("Response data class: " + response.getData().getClass().getName());
+
             if (response.getType() == ResponseType.SUCCESS) {
-                Quote quote = (Quote) response.getData();
-                updateQuoteLabel(quote);
-            } else {
-                System.err.println("Error loading quote: " + response.getData());
-                setDefaultQuote();
+                Object data = response.getData();
+                if (data instanceof Quote) {
+                    Quote quote = (Quote) data;
+                    updateQuoteLabel(quote);
+                } else {
+                    System.err.println("Expected Quote but got: " + data.getClass().getName());
+                    setDefaultQuote();
+                }
             }
         } catch (Exception e) {
             System.err.println("Exception loading quote: " + e.getMessage());
+            e.printStackTrace();
             setDefaultQuote();
         }
     }
@@ -537,7 +546,7 @@ public class MainController implements Initializable {
                 Image cachedImage = client.getImageFX(imagePath);
                 if (cachedImage != null) {
                     coverBookDetails.setImage(cachedImage);
-                    System.out.println("✅ Details cover loaded from cache: " + imagePath);
+                    System.out.println("Details cover loaded from cache: " + imagePath);
                 } else {
                     // Fallback do lokalnych zasobów
                     try {

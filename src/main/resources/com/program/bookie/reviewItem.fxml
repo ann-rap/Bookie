@@ -87,13 +87,13 @@
                         </Label>
                         <Button fx:id="revealSpoilerButton" mnemonicParsing="false" onAction="#onRevealSpoilerClicked" style="-fx-background-color: #ffc107; -fx-text-fill: white; -fx-background-radius: 5; -fx-padding: 4 12;" text="Click here to reveal">
                             <font>
-                                <Font size="12.0" />
+                                <Font size="13.0" />
                             </font>
                         </Button>
                     </children>
                 </VBox>
 
-                <!-- Review text - nakłada się na to samo miejsce co spoiler -->
+
                 <Label fx:id="reviewTextLabel" alignment="TOP_LEFT" prefWidth="850.0" style="-fx-wrap-text: true; -fx-line-spacing: 1px;" text="Review text here..." wrapText="true">
                     <font>
                         <Font size="13.0" />
@@ -107,23 +107,23 @@
         <!-- Kompaktowa comments section -->
         <VBox fx:id="commentsSection" spacing="5">
             <children>
-                <!-- Kompaktowy comments toggle button -->
-                <Button fx:id="commentsToggleButton" alignment="CENTER_LEFT" mnemonicParsing="false" onAction="#onToggleCommentsClicked" style="-fx-background-color: transparent; -fx-text-fill: #007bff; -fx-underline: true; -fx-padding: 2 0;" text="💬 Show comments (0)">
+
+                <Button fx:id="commentsToggleButton" alignment="CENTER_LEFT" mnemonicParsing="false" onAction="#onToggleCommentsClicked" style="-fx-background-color: transparent; -fx-text-fill: #658C4C; -fx-underline: true; -fx-padding: 2 0;" text="💬 Show comments (0)" textFill="#a45b5b">
                     <font>
                         <Font size="12.0" />
                     </font>
                 </Button>
 
-                <!-- Kompaktowy comments container -->
-                <VBox fx:id="commentsContainer" spacing="4" style="-fx-background-color: #f1f3f4; -fx-background-radius: 5; -fx-padding: 8;" visible="false">
-                    <children>
-                        <!-- Comments will be added here dynamically -->
 
-                        <!-- Kompaktowy add comment section -->
+                <VBox fx:id="commentsContainer" managed="false" spacing="4" style="-fx-background-color: #f1f3f4; -fx-background-radius: 5; -fx-padding: 8;" visible="false">
+                    <children>
+
+
+
                         <HBox fx:id="addCommentSection" alignment="CENTER_LEFT" spacing="6">
                             <children>
                                 <TextField fx:id="commentTextField" prefHeight="26.0" prefWidth="350.0" promptText="Add a comment..." style="-fx-background-radius: 13; -fx-padding: 4 10; -fx-font-size: 12;" />
-                                <Button fx:id="addCommentButton" mnemonicParsing="false" onAction="#onAddCommentClicked" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-background-radius: 13; -fx-padding: 4 12;" text="Post">
+                                <Button fx:id="addCommentButton" mnemonicParsing="false" onAction="#onAddCommentClicked" style="-fx-background-color: #839174; -fx-text-fill: white; -fx-background-radius: 13; -fx-padding: 4 12;" text="Post">
                                     <font>
                                         <Font size="12.0" />
                                     </font>

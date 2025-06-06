@@ -165,6 +165,8 @@ public class ReviewItemController implements Initializable {
     private void handleSpoilerContent() {
         if (currentReview == null) return;
 
+        String baseStyle = "-fx-wrap-text: true; -fx-line-spacing: 1px; -fx-font-size: 13px;";
+
         if (currentReview.isSpoiler() && !spoilerRevealed) {
             // Pokaż spoiler warning, ukryj tekst
             spoilerWarning.setVisible(true);
@@ -248,29 +250,25 @@ public class ReviewItemController implements Initializable {
         commentBox.setPadding(new Insets(6, 0, 6, 0));
         commentBox.setStyle("-fx-background-color: white; -fx-background-radius: 6; -fx-padding: 6;");
 
-        // Username label - mniejszy
         Label usernameLabel = new Label(username);
         usernameLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #333; -fx-font-size: 12px;");
 
-        // Comment text - mniejszy
+
         Label commentLabel = new Label(text);
         commentLabel.setWrapText(true);
         commentLabel.setStyle("-fx-text-fill: #555; -fx-font-size: 12px;");
 
-        // Date label - mniejszy
         Label dateLabel = new Label(formatCommentDate(date));
         dateLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 10px;");
 
-        VBox contentBox = new VBox(2); // Mniejszy spacing
+        VBox contentBox = new VBox(2);
 
-        // Username and date - kompaktowo
         HBox headerBox = new HBox(6);
         headerBox.getChildren().addAll(usernameLabel, dateLabel);
 
         contentBox.getChildren().addAll(headerBox, commentLabel);
         commentBox.getChildren().add(contentBox);
 
-        // Dodaj przed add comment section
         int insertIndex = commentsContainer.getChildren().size() - 1;
         commentsContainer.getChildren().add(insertIndex, commentBox);
     }
@@ -282,16 +280,16 @@ public class ReviewItemController implements Initializable {
     private void onAddCommentClicked(ActionEvent event) {
         String commentText = commentTextField.getText().trim();
         if (commentText.isEmpty()) {
-            System.out.println("⚠️ Comment text is empty");
+            System.out.println("Comment text is empty");
             return;
         }
 
         if (currentReview == null) {
-            System.err.println("❌ currentReview is null");
+            System.err.println("currentReview is null");
             return;
         }
 
-        System.out.println("📝 Adding comment to review ID: " + currentReview.getReviewId());
+        System.out.println("Adding comment to review ID: " + currentReview.getReviewId());
 
         try {
             Comment comment = new Comment();
@@ -303,7 +301,7 @@ public class ReviewItemController implements Initializable {
             Response response = client.sendRequest(request);
 
             if (response.getType() == ResponseType.SUCCESS) {
-                System.out.println("✅ Comment added successfully");
+                System.out.println("Comment added successfully");
 
                 commentTextField.clear();
 
@@ -323,12 +321,12 @@ public class ReviewItemController implements Initializable {
                 updateCommentsButtonText(cachedComments.size());
 
             } else {
-                System.err.println("❌ Error adding comment: " + response.getData());
+                System.err.println("Error adding comment: " + response.getData());
                 showAddCommentError("Error adding comment: " + response.getData());
             }
 
         } catch (Exception e) {
-            System.err.println("💥 Exception adding comment: " + e.getMessage());
+            System.err.println("Exception adding comment: " + e.getMessage());
             e.printStackTrace();
             showAddCommentError("Failed to add comment");
         }

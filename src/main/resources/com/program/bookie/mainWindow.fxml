@@ -109,7 +109,7 @@
                      <content>
                         <AnchorPane maxHeight="1.7976931348623157E308" minHeight="0.0" minWidth="0.0" prefWidth="1000.0">
                            <children>
-                              <VBox fx:id="reviewsContainer" layoutX="14.0" layoutY="470.0" />
+                              <VBox fx:id="reviewsContainer" layoutX="14.0" layoutY="480.0" spacing="10.0"/>
                               <Pane layoutX="36.0" layoutY="26.0" style="-fx-background-color: #e8e8e8;">
                                  <children>
                                     <ImageView fx:id="coverBookDetails" fitHeight="251.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />

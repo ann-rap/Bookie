@@ -24,7 +24,7 @@ public class Client {
     private static final int MAX_CACHE_SIZE = 100;
 
     private Client() {
-        // Prywatny konstruktor dla Singleton
+
     }
 
     public static synchronized Client getInstance() {
@@ -53,7 +53,7 @@ public class Client {
         }
     }
 
-    public Response sendRequest(Request request) {
+    public synchronized Response sendRequest(Request request) {
         try {
             if (!connected || socket == null || socket.isClosed()) {
                 if (!connect()) {
