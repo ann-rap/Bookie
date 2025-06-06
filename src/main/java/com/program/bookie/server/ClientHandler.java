@@ -13,18 +13,22 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import com.program.bookie.models.ReadingInsights;
+import com.program.bookie.models.ImageData;
+import java.io.FileNotFoundException;
 
 public class ClientHandler implements Runnable {
     private Socket clientSocket;
     private ObjectInputStream input;
     private ObjectOutputStream output;
     private DatabaseConnection dbManager;
+    private ImageService imageService;
     private User currentUser;
     private String clientAddress;
 
     public ClientHandler(Socket socket, DatabaseConnection dbManager) {
         this.clientSocket = socket;
         this.dbManager = dbManager;
+        this.imageService = new ImageService();
         this.clientAddress = socket.getRemoteSocketAddress().toString();
         System.out.println("New client connected: " + clientAddress);
     }
@@ -86,6 +90,8 @@ public class ClientHandler implements Runnable {
                 return handleUpdateReadingStatus(request);
             case GET_USER_RATING:
                 return handleGetUserRating(request);
+            case GET_IMAGE:
+                return handleGetImage(request);
             case GET_USER_REVIEW:
                 return handleGetUserReview(request);
             case SAVE_USER_REVIEW:
@@ -96,6 +102,12 @@ public class ClientHandler implements Runnable {
                 return handleGetUserStatistics(request);
             case GET_READING_INSIGHTS:
                 return handleGetReadingInsights(request);
+            case GET_BOOK_REVIEWS:
+                return handleGetBookReviews(request);
+            case GET_REVIEW_COMMENTS:
+                return handleGetReviewComments(request);
+            case ADD_COMMENT:
+                return handleAddComment(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -319,6 +331,26 @@ public class ClientHandler implements Runnable {
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         } catch (Exception e) {
             System.err.println("Error in handleGetUserStatistics: " + e.getMessage());
+                 return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetBookReviews(Request request) {
+        try {
+            Integer bookId = (Integer) request.getData();
+
+            if (bookId == null) {
+                return new Response(ResponseType.ERROR, "Book ID is required");
+            }
+
+            List<Review> reviews = dbManager.getBookReviews(bookId);
+            return new Response(ResponseType.SUCCESS, reviews);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetBookReviews: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetBookReviews: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
@@ -339,6 +371,54 @@ public class ClientHandler implements Runnable {
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         } catch (Exception e) {
             System.err.println("Error in handleGetReadingInsights: " + e.getMessage());
+                   return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+    private Response handleGetReviewComments(Request request) {
+        try {
+            Integer reviewId = (Integer) request.getData();
+
+            if (reviewId == null) {
+                return new Response(ResponseType.ERROR, "Review ID is required");
+            }
+
+            List<Comment> comments = dbManager.getReviewComments(reviewId);
+            return new Response(ResponseType.SUCCESS, comments);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetReviewComments: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetReviewComments: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleAddComment(Request request) {
+        try {
+            Comment comment = (Comment) request.getData();
+
+            if (comment.getUsername() == null || comment.getContent() == null) {
+                return new Response(ResponseType.ERROR, "Username and content are required");
+            }
+
+            if (comment.getReviewId() == 0) {
+                return new Response(ResponseType.ERROR, "Review ID is required");
+            }
+
+            // Sprawdź czy review istnieje
+            if (!dbManager.reviewExists(comment.getReviewId())) {
+                return new Response(ResponseType.ERROR, "Review not found");
+            }
+
+            dbManager.addComment(comment.getUsername(), comment.getReviewId(), comment.getContent());
+            return new Response(ResponseType.SUCCESS, "Comment added successfully");
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleAddComment: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleAddComment: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
@@ -355,4 +435,28 @@ public class ClientHandler implements Runnable {
         }
 
     }
+
+    private Response handleGetImage(Request request) {
+        try {
+            String filename = (String) request.getData();
+
+            if (filename == null || filename.trim().isEmpty()) {
+                return new Response(ResponseType.ERROR, "Filename is required");
+            }
+
+            ImageData imageData = imageService.getImage(filename);
+            return new Response(ResponseType.SUCCESS, imageData);
+
+        } catch (FileNotFoundException e) {
+            return new Response(ResponseType.ERROR, "Image not found: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error loading image: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error loading image: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Unexpected error in handleGetImage: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Unexpected error: " + e.getMessage());
+        }
+    }
+
 }
+

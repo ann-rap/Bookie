@@ -25,12 +25,16 @@ import javafx.stage.Stage;
 import javafx.scene.Parent;
 import javafx.stage.StageStyle;
 import javafx.application.Platform;
-import java.util.Objects;
+
+import java.util.*;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import com.program.bookie.app.controllers.StatisticsController;
+import java.io.ByteArrayInputStream;
+import com.program.bookie.models.ImageData;
+
 
 public class MainController implements Initializable {
 
@@ -82,7 +86,9 @@ public class MainController implements Initializable {
     private Label quoteLabel;
 
     @FXML
+
     private Pane statisticsPane;
+    private VBox reviewsContainer;
 
     private boolean isUserMenuVisible = false;
 
@@ -99,6 +105,7 @@ public class MainController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        client.clearImageCache();
         setHover(homeButton);
         setHover(statisticsButton);
         setHover(shelfButton);
@@ -149,6 +156,7 @@ public class MainController implements Initializable {
     public void closeButtonOnAction(ActionEvent actionEvent) {
         if (client != null) {
             System.out.println("Disconnecting client...");
+            client.clearImageCache();
             client.disconnect();
         }
         Stage stage = (Stage) closeButton.getScene().getWindow();
@@ -183,6 +191,7 @@ public class MainController implements Initializable {
         try {
             if (client != null) {
                 System.out.println("Logging out user: " + currentUser.getUsername());
+                client.clearImageCache();
                 client.disconnect();
             }
 
@@ -248,20 +257,29 @@ public class MainController implements Initializable {
         return false;
     }
 
+    //CYTATY
     private void loadRandomQuote() {
         try {
             Request request = new Request(RequestType.GET_RANDOM_QUOTE, null);
             Response response = client.sendRequest(request);
 
+
+            System.out.println("Response type: " + response.getType());
+            System.out.println("Response data class: " + response.getData().getClass().getName());
+
             if (response.getType() == ResponseType.SUCCESS) {
-                Quote quote = (Quote) response.getData();
-                updateQuoteLabel(quote);
-            } else {
-                System.err.println("Error loading quote: " + response.getData());
-                setDefaultQuote();
+                Object data = response.getData();
+                if (data instanceof Quote) {
+                    Quote quote = (Quote) data;
+                    updateQuoteLabel(quote);
+                } else {
+                    System.err.println("Expected Quote but got: " + data.getClass().getName());
+                    setDefaultQuote();
+                }
             }
         } catch (Exception e) {
             System.err.println("Exception loading quote: " + e.getMessage());
+            e.printStackTrace();
             setDefaultQuote();
         }
     }
@@ -352,6 +370,16 @@ public class MainController implements Initializable {
         booksContainer.setSpacing(20);
         booksContainer.setAlignment(Pos.CENTER);
 
+        // Preload obrazów w tle
+        String[] imagePaths = books.stream()
+                .map(Book::getCoverImagePath)
+                .filter(path -> path != null && !path.isEmpty())
+                .toArray(String[]::new);
+
+        if (imagePaths.length > 0) {
+            client.preloadImages(imagePaths);
+        }
+
         for (Book book : books) {
             VBox bookCard = createBookCard(book);
             booksContainer.getChildren().add(bookCard);
@@ -372,27 +400,10 @@ public class MainController implements Initializable {
         coverImageView.setFitWidth(120);
         coverImageView.setFitHeight(160);
         coverImageView.setPreserveRatio(true);
+        coverImageView.setSmooth(true);
 
-        try {
-            String imagePath = book.getCoverImagePath();
-            if (imagePath != null && !imagePath.isEmpty()) {
-                String fullResourcePath = "/img/" + imagePath;
-
-                URL imageUrl = getClass().getResource(fullResourcePath);
-                if (imageUrl != null) {
-                    Image coverImage = new Image(imageUrl.toString());
-                    coverImageView.setImage(coverImage);
-                    System.out.println("Successfully loaded image: " + fullResourcePath);
-                } else {
-                    System.err.println("Image not found in resources: " + fullResourcePath);
-                    setDefaultCoverImage(coverImageView);
-                }
-            } else {
-                setDefaultCoverImage(coverImageView);
-            }
-        } catch (Exception e) {
-            setDefaultCoverImage(coverImageView);
-        }
+        // nowe ladowanie
+        loadBookCoverSmart(book, coverImageView);
 
         // Tytuł książki
         Label titleLabel = new Label(book.getTitle());
@@ -422,7 +433,7 @@ public class MainController implements Initializable {
 
         bookCard.getChildren().addAll(coverImageView, titleLabel, authorLabel, ratingLabel);
 
-
+        // Hover effects
         bookCard.setOnMouseEntered(e -> {
             bookCard.setStyle("-fx-background-color: #e9ecef; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 8, 0, 0, 3);");
         });
@@ -430,7 +441,6 @@ public class MainController implements Initializable {
         bookCard.setOnMouseExited(e -> {
             bookCard.setStyle("-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
         });
-
 
         bookCard.setOnMouseClicked(e -> {
             System.out.println("Clicked on book: " + book.getTitle());
@@ -552,23 +562,30 @@ public class MainController implements Initializable {
         }
 
         if (coverBookDetails != null) {
-            try {
-                String imagePath = book.getCoverImagePath();
-                if (imagePath != null && !imagePath.isEmpty()) {
-                    String fullResourcePath = "/img/" + imagePath;
-                    URL imageUrl = getClass().getResource(fullResourcePath);
-                    if (imageUrl != null) {
-                        Image coverImage = new Image(imageUrl.toString());
-                        coverBookDetails.setImage(coverImage);
-                    } else {
-                        setDefaultDetailsCoverImage();
-                    }
+            String imagePath = book.getCoverImagePath();
+            if (imagePath != null && !imagePath.isEmpty()) {
+                Image cachedImage = client.getImageFX(imagePath);
+                if (cachedImage != null) {
+                    coverBookDetails.setImage(cachedImage);
+                    System.out.println("Details cover loaded from cache: " + imagePath);
                 } else {
-                    setDefaultDetailsCoverImage();
+                    // Fallback do lokalnych zasobów
+                    try {
+                        String fullResourcePath = "/img/" + imagePath;
+                        URL imageUrl = getClass().getResource(fullResourcePath);
+                        if (imageUrl != null) {
+                            Image coverImage = new Image(imageUrl.toString());
+                            coverBookDetails.setImage(coverImage);
+                        } else {
+                            setDefaultDetailsCoverImage();
+                        }
+                    } catch (Exception e) {
+                        setDefaultDetailsCoverImage();
+                        System.err.println("Error loading book details cover: " + e.getMessage());
+                    }
                 }
-            } catch (Exception e) {
+            } else {
                 setDefaultDetailsCoverImage();
-                System.err.println("Error loading book details cover: " + e.getMessage());
             }
 
             homePane.setVisible(false);
@@ -579,6 +596,7 @@ public class MainController implements Initializable {
 
 
         updateStarRatingD(book.getAverageRating());
+        loadBookReviews();
 
         //user status
         initializeBookDetailsComboBox();
@@ -632,6 +650,55 @@ public class MainController implements Initializable {
         }
 
         System.out.println("Updated star rating to: " + rating + " (Full stars: " + fullStars + ", Partial: " + partialStar + ")");
+    }
+
+    /**
+     * Ładuje reviews dla aktualnie wyświetlanej książki
+     */
+    private void loadBookReviews() {
+        if (currentBookDetails == null) return;
+
+        try {
+            System.out.println("Proba pobrania recenzji");
+            Request request = new Request(RequestType.GET_BOOK_REVIEWS, currentBookDetails.getBookId());
+            Response response = client.sendRequest(request);
+
+            if (response.getType() == ResponseType.SUCCESS) {
+                @SuppressWarnings("unchecked")
+                List<Review> reviews = (List<Review>) response.getData();
+                displayReviews(reviews);
+            } else {
+                System.err.println("Error loading reviews: " + response.getData());
+            }
+
+        } catch (Exception e) {
+            System.err.println("Exception loading reviews: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Wyświetla reviews w kontenerze
+     */
+    private void displayReviews(List<Review> reviews) {
+        if (reviewsContainer == null) return;
+
+        reviewsContainer.getChildren().clear();
+        System.out.println("Displaying reviews: " + reviews.size());
+
+        for (Review review : reviews) {
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/reviewItem.fxml"));
+                VBox reviewItem = loader.load();
+
+                ReviewItemController controller = loader.getController();
+                controller.setReviewData(review, currentUser.getUsername());
+
+                reviewsContainer.getChildren().add(reviewItem);
+
+            } catch (Exception e) {
+                System.err.println("Error loading review item: " + e.getMessage());
+            }
+        }
     }
 
 
@@ -825,6 +892,72 @@ public class MainController implements Initializable {
             }
         }
     }
+
+ /**Inteligentne ładowanie okładki: cache -> serwer -> lokalne zasoby
+ */
+    private void loadBookCoverSmart(Book book, ImageView imageView) {
+        String imagePath = book.getCoverImagePath();
+        if (imagePath == null || imagePath.isEmpty()) {
+            setDefaultCoverImage(imageView);
+            return;
+        }
+
+        // Sprawdź czy obraz jest już w cache klienta
+        Image cachedImage = client.getImageFX(imagePath);
+        if (cachedImage != null) {
+            imageView.setImage(cachedImage);
+            System.out.println("✅ Loaded from CLIENT CACHE: " + imagePath);
+            return;
+        }
+
+        // Uruchom w osobnym wątku żeby nie blokować UI
+        new Thread(() -> {
+            try {
+                // Spróbuj pobrać z serwera (thumbnail)
+                Image serverImage = client.getImageFX(imagePath);
+
+                Platform.runLater(() -> {
+                    if (serverImage != null) {
+                        imageView.setImage(serverImage);
+                        System.out.println("✅ Loaded from SERVER: " + imagePath);
+                    } else {
+                        // Fallback - spróbuj lokalnie
+                        loadLocalImage(book, imageView);
+                    }
+                });
+
+            } catch (Exception e) {
+                System.err.println("Error loading from server: " + e.getMessage());
+                Platform.runLater(() -> loadLocalImage(book, imageView));
+            }
+        }).start();
+    }
+
+    /**
+     * Ładowanie z lokalnych zasobów (fallback)
+     */
+    private void loadLocalImage(Book book, ImageView imageView) {
+        try {
+            String imagePath = book.getCoverImagePath();
+            if (imagePath != null && !imagePath.isEmpty()) {
+                String fullResourcePath = "/img/" + imagePath;
+                URL imageUrl = getClass().getResource(fullResourcePath);
+                if (imageUrl != null) {
+                    Image coverImage = new Image(imageUrl.toString());
+                    imageView.setImage(coverImage);
+                    System.out.println("✅ Loaded LOCALLY: " + fullResourcePath);
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading local image: " + e.getMessage());
+        }
+
+        // Ostateczny fallback
+        setDefaultCoverImage(imageView);
+        System.out.println("🔄 Using DEFAULT image");
+    }
+
 
 
     //EDIT OR ADD REVIEW FROM DETAILS

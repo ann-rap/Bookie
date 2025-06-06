@@ -1,6 +1,7 @@
 package com.program.bookie.app.controllers;
 
 import com.program.bookie.models.*;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
@@ -18,6 +19,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -67,7 +69,7 @@ public class SearchController {
         ratingCountLabel.setText(book.getRatingCount() + " ratings");
         publicationYearLabel.setText("published in " + book.getPublicationYear());
 
-        setupBookCover(book);
+        setupBookCoverOptimized(book);
         initializeComboBox();
         loadUserRating();
         loadReadingStatus();
@@ -122,37 +124,116 @@ public class SearchController {
         return false;
     }
 
-    private void setupBookCover(Book book) {
-        if (book.getCoverImagePath() != null && !book.getCoverImagePath().isEmpty()) {
+    /**
+     * Nowa, zoptymalizowana metoda ładowania okładki z cache
+     */
+    private void setupBookCoverOptimized(Book book) {
+        if (bookCover == null) return;
+
+        String imagePath = book.getCoverImagePath();
+        if (imagePath == null || imagePath.isEmpty()) {
+            setDefaultCover();
+            return;
+        }
+
+        // Ustaw domyślny rozmiar
+        bookCover.setFitWidth(150);
+        bookCover.setFitHeight(200);
+        bookCover.setPreserveRatio(true);
+        bookCover.setSmooth(true);
+
+        // Spróbuj najpierw z cache klienta
+        Image cachedImage = client.getImageFX(imagePath);
+        if (cachedImage != null) {
+            setImageWithViewport(cachedImage);
+            System.out.println("✅ Search cover loaded from cache: " + imagePath);
+            return;
+        }
+
+        // Załaduj w tle z serwera
+        new Thread(() -> {
             try {
-                Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/" + book.getCoverImagePath())));
-                bookCover.setImage(image);
+                Image serverImage = client.getImageFX(imagePath);
 
-                double fitWidth = 150;
-                double fitHeight = 200;
-                bookCover.setFitWidth(fitWidth);
-                bookCover.setFitHeight(fitHeight);
-                bookCover.setPreserveRatio(true);
-                bookCover.setSmooth(true);
+                Platform.runLater(() -> {
+                    if (serverImage != null) {
+                        setImageWithViewport(serverImage);
+                        System.out.println("✅ Search cover loaded from server: " + imagePath);
+                    } else {
+                        // Fallback do lokalnych zasobów
+                        loadLocalCover(imagePath);
+                    }
+                });
 
-                double imageWidth = image.getWidth();
-                double imageHeight = image.getHeight();
-
-                double scaleX = imageWidth / fitWidth;
-                double scaleY = imageHeight / fitHeight;
-                double scale = Math.min(scaleX, scaleY);
-
-                double viewportWidth = fitWidth * scale;
-                double viewportHeight = fitHeight * scale;
-                double viewportX = (imageWidth - viewportWidth) / 2;
-                double viewportY = (imageHeight - viewportHeight) / 2;
-
-                bookCover.setViewport(new Rectangle2D(viewportX, viewportY, viewportWidth, viewportHeight));
             } catch (Exception e) {
-                System.err.println("Error loading book cover: " + e.getMessage());
+                System.err.println("Error loading cover from server: " + e.getMessage());
+                Platform.runLater(() -> loadLocalCover(imagePath));
             }
+        }).start();
+    }
+
+    /**
+     * Ustawia obraz z odpowiednim viewport (przycinanie)
+     */
+    private void setImageWithViewport(Image image) {
+        if (bookCover == null || image == null) return;
+
+        bookCover.setImage(image);
+
+        // Ustaw viewport dla lepszego wyświetlania (przytnij do proporcji okładki)
+        double fitWidth = 150;
+        double fitHeight = 200;
+
+        double imageWidth = image.getWidth();
+        double imageHeight = image.getHeight();
+
+        if (imageWidth > 0 && imageHeight > 0) {
+            double scaleX = imageWidth / fitWidth;
+            double scaleY = imageHeight / fitHeight;
+            double scale = Math.min(scaleX, scaleY);
+
+            double viewportWidth = fitWidth * scale;
+            double viewportHeight = fitHeight * scale;
+            double viewportX = Math.max(0, (imageWidth - viewportWidth) / 2);
+            double viewportY = Math.max(0, (imageHeight - viewportHeight) / 2);
+
+            bookCover.setViewport(new Rectangle2D(viewportX, viewportY, viewportWidth, viewportHeight));
         }
     }
+
+    /**
+     * Fallback do lokalnych zasobów
+     */
+    private void loadLocalCover(String imagePath) {
+        try {
+            String fullResourcePath = "/img/" + imagePath;
+            URL imageUrl = getClass().getResource(fullResourcePath);
+            if (imageUrl != null) {
+                Image localImage = new Image(imageUrl.toString());
+                setImageWithViewport(localImage);
+                System.out.println("✅ Search cover loaded locally: " + fullResourcePath);
+            } else {
+                System.err.println("Local image not found: " + fullResourcePath);
+                setDefaultCover();
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading local cover: " + e.getMessage());
+            setDefaultCover();
+        }
+    }
+
+    /**
+     * Ustawia domyślną okładkę
+     */
+    private void setDefaultCover() {
+        if (bookCover != null) {
+            bookCover.setImage(null);
+            bookCover.setStyle("-fx-background-color: #dddddd; -fx-border-color: #cccccc; -fx-border-width: 1;");
+            System.out.println("🔄 Using default cover for search result");
+        }
+    }
+
+
 
     private void initializeComboBox() {
         statusComboBox.getItems().clear();
