@@ -96,6 +96,12 @@ public class ClientHandler implements Runnable {
                 return handleSaveUserReview(request);
             case GET_RANDOM_QUOTE:
                 return handleGetRandomQuote(request);
+            case GET_BOOK_REVIEWS:
+                return handleGetBookReviews(request);
+            case GET_REVIEW_COMMENTS:
+                return handleGetReviewComments(request);
+            case ADD_COMMENT:
+                return handleAddComment(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -300,6 +306,75 @@ public class ClientHandler implements Runnable {
             // Zwróć domyślny cytat w przypadku błędu
             Quote defaultQuote = new Quote("Welcome to Bookie - your personal reading companion!", "Bookie Team");
             return new Response(ResponseType.SUCCESS, defaultQuote);
+        }
+    }
+
+    private Response handleGetBookReviews(Request request) {
+        try {
+            Integer bookId = (Integer) request.getData();
+
+            if (bookId == null) {
+                return new Response(ResponseType.ERROR, "Book ID is required");
+            }
+
+            List<Review> reviews = dbManager.getBookReviews(bookId);
+            return new Response(ResponseType.SUCCESS, reviews);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetBookReviews: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetBookReviews: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetReviewComments(Request request) {
+        try {
+            Integer reviewId = (Integer) request.getData();
+
+            if (reviewId == null) {
+                return new Response(ResponseType.ERROR, "Review ID is required");
+            }
+
+            List<Comment> comments = dbManager.getReviewComments(reviewId);
+            return new Response(ResponseType.SUCCESS, comments);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetReviewComments: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetReviewComments: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleAddComment(Request request) {
+        try {
+            Comment comment = (Comment) request.getData();
+
+            if (comment.getUsername() == null || comment.getContent() == null) {
+                return new Response(ResponseType.ERROR, "Username and content are required");
+            }
+
+            if (comment.getReviewId() == 0) {
+                return new Response(ResponseType.ERROR, "Review ID is required");
+            }
+
+            // Sprawdź czy review istnieje
+            if (!dbManager.reviewExists(comment.getReviewId())) {
+                return new Response(ResponseType.ERROR, "Review not found");
+            }
+
+            dbManager.addComment(comment.getUsername(), comment.getReviewId(), comment.getContent());
+            return new Response(ResponseType.SUCCESS, "Comment added successfully");
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleAddComment: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleAddComment: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 

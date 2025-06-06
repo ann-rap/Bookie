@@ -11,7 +11,7 @@ import java.util.List;
 
 
 public class DatabaseConnection {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/login";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/bookie";
     private static final String USERNAME = "root";
     private static final String PASSWORD = "hasloProgram";
 
@@ -531,6 +531,150 @@ public class DatabaseConnection {
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Pobiera wszystkie reviews dla danej książki wraz z datami
+     */
+    public List<Review> getBookReviews(int bookId) throws SQLException {
+        String sql = """
+        SELECT r.review_id, r.user_id, r.book_id, r.rating, r.content, r.is_spoiler,
+               r.created_at, r.updated_at, ua.username
+        FROM reviews r
+        INNER JOIN user_account ua ON r.user_id = ua.account_id
+        WHERE r.book_id = ?
+        ORDER BY r.created_at DESC
+        """;
+
+        List<Review> reviews = new ArrayList<>();
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Review review = new Review();
+                    review.setReviewId(rs.getInt("review_id"));
+                    review.setUserId(rs.getInt("user_id"));
+                    review.setBookId(rs.getInt("book_id"));
+                    review.setRating(rs.getInt("rating"));
+                    review.setReviewText(rs.getString("content"));
+                    review.setSpoiler(rs.getBoolean("is_spoiler"));
+                    review.setUsername(rs.getString("username"));
+
+                    // Konwersja Timestamp na LocalDateTime
+                    if (rs.getTimestamp("created_at") != null) {
+                        review.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                    }
+                    if (rs.getTimestamp("updated_at") != null) {
+                        review.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+                    }
+
+                    reviews.add(review);
+                }
+            }
+        }
+
+        return reviews;
+    }
+
+    /**
+     * Pobiera komentarze dla danego review
+     */
+    public List<Comment> getReviewComments(int reviewId) throws SQLException {
+        String sql = """
+        SELECT c.comment_id, c.review_id, c.user_id, c.content, c.created_at,
+               ua.username
+        FROM comments c
+        INNER JOIN user_account ua ON c.user_id = ua.account_id
+        WHERE c.review_id = ?
+        ORDER BY c.created_at ASC
+        """;
+
+        List<Comment> comments = new ArrayList<>();
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, reviewId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Comment comment = new Comment(
+                            rs.getInt("comment_id"),
+                            rs.getInt("review_id"),
+                            rs.getInt("user_id"),
+                            rs.getString("username"),
+                            rs.getString("content"),
+                            rs.getTimestamp("created_at").toLocalDateTime()
+                    );
+                    comments.add(comment);
+                }
+            }
+        }
+
+        return comments;
+    }
+
+    /**
+     * Dodaje nowy komentarz
+     */
+    public void addComment(String username, int reviewId, String content) throws SQLException {
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("Comment content cannot be empty");
+        }
+
+        String sql = """
+        INSERT INTO comments (review_id, user_id, content, created_at)
+        SELECT ?, ua.account_id, ?, CURRENT_TIMESTAMP
+        FROM user_account ua
+        WHERE ua.username = ?
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, reviewId);
+            stmt.setString(2, content.trim());
+            stmt.setString(3, username);
+
+            int rowsInserted = stmt.executeUpdate();
+            if (rowsInserted == 0) {
+                throw new SQLException("Failed to insert comment - user not found: " + username);
+            }
+        }
+    }
+
+    /**
+     * Pobiera liczbę komentarzy dla danego review
+     */
+    public int getCommentsCount(int reviewId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM comments WHERE review_id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, reviewId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+                return 0;
+            }
+        }
+    }
+
+    /**
+     * Sprawdza czy review istnieje
+     */
+    public boolean reviewExists(int reviewId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM reviews WHERE review_id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, reviewId);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
