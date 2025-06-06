@@ -470,12 +470,18 @@ public class MainController implements Initializable {
         String searchTerm = searchField.getText();
         if (searchTerm == null || searchTerm.isBlank()) return;
 
+        System.out.println("Searching for: " + searchTerm); // Debug
+
         try {
             Request request = new Request(RequestType.SEARCH_BOOK, searchTerm);
+            System.out.println("Sending search request..."); // Debug
+
             Response response = client.sendRequest(request);
+            System.out.println("Received response: " + response.getType()); // Debug
 
             if (response.getType() == ResponseType.SUCCESS) {
                 List<Book> results = (List<Book>) response.getData();
+                System.out.println("Search results count: " + results.size()); // Debug
 
                 showSearchResults(results);
                 loadRandomQuote();
@@ -486,6 +492,7 @@ public class MainController implements Initializable {
                 System.err.println("Search failed: " + response.getData());
             }
         } catch (Exception e) {
+            System.err.println("Search exception: " + e.getMessage());
             e.printStackTrace();
         }
     }
