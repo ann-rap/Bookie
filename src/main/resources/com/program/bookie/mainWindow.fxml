@@ -12,8 +12,10 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
 <?import javafx.scene.text.Font?>
 
+<?import javafx.scene.layout.Region?>
 <AnchorPane prefHeight="600.0" prefWidth="1000.0" style="-fx-background-color: #E9E9E9;" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.MainController">
    <children>
       <AnchorPane prefHeight="116.0" prefWidth="1000.0" style="-fx-background-color: #839174;">
@@ -36,8 +38,8 @@
                   </ImageView>
                </graphic>
             </Button>
-            <TextField fx:id="searchField" layoutX="636.0" layoutY="71.0" prefHeight="34.0" prefWidth="246.0" promptText="Search" style="-fx-background-color: #e9e9e9;" />
-            <Button fx:id="searchButton" layoutX="840.0" layoutY="71.0" mnemonicParsing="false" onAction="#onSearchClicked" prefHeight="34.0" prefWidth="40.0" style="-fx-background-color: transparent;">
+            <TextField fx:id="searchField" layoutX="605.0" layoutY="71.0" prefHeight="34.0" prefWidth="246.0" promptText="Search" style="-fx-background-color: #e9e9e9;" />
+            <Button fx:id="searchButton" layoutX="809.0" layoutY="71.0" mnemonicParsing="false" onAction="#onSearchClicked" prefHeight="34.0" prefWidth="40.0" style="-fx-background-color: transparent;">
                <graphic>
                   <ImageView fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true">
                      <image>
@@ -84,8 +86,35 @@
                   </ImageView>
                </graphic>
             </Button>
+            <StackPane fx:id="notificationBadge" layoutX="866.0" layoutY="55.0" mouseTransparent="true" prefHeight="50.0" prefWidth="49.0">
+               <children>
+                  <Button fx:id="bellButton" mnemonicParsing="false" prefHeight="59.0" prefWidth="61.0" style="-fx-background-color: transparent;">
+                     <graphic>
+                        <ImageView fx:id="bellImage" fitHeight="42.0" fitWidth="42.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@../../../img/bell.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                  </Button>
+                  <StackPane alignment="TOP_LEFT" prefHeight="57.0" prefWidth="56.0">
+                     <children>
+                        <Circle fill="#c44e4e" radius="10.0" stroke="#c44e4e" strokeType="INSIDE" />
+                        <Label fx:id="countNLabel" alignment="CENTER" contentDisplay="CENTER" prefHeight="22.0" prefWidth="20.0" text="0" textAlignment="CENTER" textFill="WHITE" translateY="-1.0">
+                           <font>
+                              <Font name="System Bold" size="13.0" />
+                           </font>
+                        </Label>
+                     </children>
+                  </StackPane>
+               </children>
+            </StackPane>
+
+
          </children>
       </AnchorPane>
+
+
       <StackPane layoutY="116.0" prefHeight="484.0" prefWidth="1000.0">
          <children>
             <Pane fx:id="homePane" prefHeight="447.0" prefWidth="1000.0">
@@ -109,7 +138,7 @@
                      <content>
                         <AnchorPane maxHeight="1.7976931348623157E308" minHeight="0.0" minWidth="0.0" prefWidth="1000.0">
                            <children>
-                              <VBox fx:id="reviewsContainer" layoutX="14.0" layoutY="480.0" spacing="10.0"/>
+                              <VBox fx:id="reviewsContainer" layoutX="14.0" layoutY="480.0" spacing="10.0" />
                               <Pane layoutX="36.0" layoutY="26.0" style="-fx-background-color: #e8e8e8;">
                                  <children>
                                     <ImageView fx:id="coverBookDetails" fitHeight="251.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
@@ -295,6 +324,31 @@
                <Font name="System" size="13.0" />
             </font>
          </Button>
+      </VBox>
+
+      <VBox fx:id="notificationDropdown" layoutX="690.0" layoutY="108.0" prefHeight="400.0" prefWidth="300.0"
+            style="-fx-background-color: #ffffff; -fx-border-color: #839174; -fx-border-width: 2;
+             -fx-border-radius: 8; -fx-background-radius: 8;
+             -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 5);"
+            visible="false">
+
+         <HBox alignment="CENTER_LEFT" prefHeight="50" style="-fx-padding: 10 15; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
+            <Label text="Notifications" style="-fx-font-weight: bold; -fx-font-size: 16;">
+               <font>
+                  <Font name="Bookman Old Style" size="16.0" />
+               </font>
+            </Label>
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Clear All" onAction="#onClearNotificationsClicked"
+                    style="-fx-background-color: transparent; -fx-text-fill: #839174;
+                       -fx-underline: true; -fx-cursor: hand;" />
+         </HBox>
+
+         <ScrollPane fitToWidth="true" prefHeight="350" style="-fx-background-color: transparent;">
+            <content>
+               <VBox fx:id="notificationsList" spacing="0" style="-fx-background-color: white;" />
+            </content>
+         </ScrollPane>
       </VBox>
    </children>
 </AnchorPane>

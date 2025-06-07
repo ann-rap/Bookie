@@ -1,7 +1,11 @@
 package com.program.bookie.app.controllers;
 
 import com.program.bookie.client.Client;
+import com.program.bookie.client.NotificationService;
 import com.program.bookie.models.*;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -9,16 +13,10 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -33,7 +31,10 @@ import java.net.URL;
 import java.util.*;
 import com.program.bookie.app.controllers.StatisticsController;
 import java.io.ByteArrayInputStream;
+import java.util.stream.Collectors;
+
 import com.program.bookie.models.ImageData;
+import javafx.util.Duration;
 
 
 public class MainController implements Initializable {
@@ -86,11 +87,19 @@ public class MainController implements Initializable {
     private Label quoteLabel;
 
     @FXML
-
     private Pane statisticsPane;
+    @FXML
     private VBox reviewsContainer;
 
+    @FXML private ImageView bellImage;
+    @FXML private StackPane notificationBadge;
+    @FXML private Label notificationCountLabel;
+    @FXML private VBox notificationDropdown;
+    @FXML private VBox notificationsList;
+
     private boolean isUserMenuVisible = false;
+    private NotificationService notificationService;
+    private boolean isNotificationMenuVisible = false;
 
     private Client client = Client.getInstance();
     private User currentUser;
@@ -101,11 +110,13 @@ public class MainController implements Initializable {
             welcomeLabel.setText("Welcome " + user.getUsername() + "!");
         }
         loadRandomQuote();
+        notificationService.start(user.getUsername());
     }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         client.clearImageCache();
+        notificationService = NotificationService.getInstance();
         setHover(homeButton);
         setHover(statisticsButton);
         setHover(shelfButton);
@@ -150,10 +161,22 @@ public class MainController implements Initializable {
                     logoutButton.setStyle("-fx-background-color: transparent; -fx-alignment: center-left; -fx-padding: 10 16; -fx-text-fill: #615252; -fx-border-color: transparent;"));
         }
 
+        //powiadomienia
+        notificationService.unreadCountProperty().addListener((obs, oldCount, newCount) -> {
+            updateNotificationBadge(newCount.intValue());
+        });
+
+        if (bellImage != null) {
+            bellImage.setOnMouseClicked(event -> toggleNotificationMenu());
+        }
+
     }
 
     //MENU
     public void closeButtonOnAction(ActionEvent actionEvent) {
+        if (notificationService != null) {
+            notificationService.stop();
+        }
         if (client != null) {
             System.out.println("Disconnecting client...");
             client.clearImageCache();
@@ -189,6 +212,9 @@ public class MainController implements Initializable {
 
     public void onLogoutClicked(ActionEvent event) {
         try {
+            if (notificationService != null) {
+                notificationService.stop();
+            }
             if (client != null) {
                 System.out.println("Logging out user: " + currentUser.getUsername());
                 client.clearImageCache();
@@ -211,6 +237,20 @@ public class MainController implements Initializable {
         } catch (Exception e) {
             System.err.println("Error during logout: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void onClearNotificationsClicked() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Clear Notifications");
+        alert.setHeaderText(null);
+        alert.setContentText("Are you sure you want to clear all notifications?");
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            notificationService.clearAllNotifications();
+            hideNotificationMenu();
         }
     }
 
@@ -548,7 +588,7 @@ public class MainController implements Initializable {
         }
 
         if (detailsReviews != null) {
-            detailsReviews.setText(book.getRatingCount() + " reviews");
+            detailsReviews.setText(book.getReviewCount() + " reviews");
         }
 
         if (detailsDescription != null) {
@@ -666,7 +706,11 @@ public class MainController implements Initializable {
             if (response.getType() == ResponseType.SUCCESS) {
                 @SuppressWarnings("unchecked")
                 List<Review> reviews = (List<Review>) response.getData();
-                displayReviews(reviews);
+                List<Review> reviewsWithContent = reviews.stream()
+                        .filter(review -> review.getReviewText() != null &&
+                                !review.getReviewText().trim().isEmpty())
+                        .collect(Collectors.toList());
+                displayReviews(reviewsWithContent);
             } else {
                 System.err.println("Error loading reviews: " + response.getData());
             }
@@ -979,6 +1023,7 @@ public class MainController implements Initializable {
             reviewStage.setOnHidden(e -> {
                 // Odśwież rating status label
                 loadBookDetailsUserRating();
+                loadBookReviews();
             });
 
             reviewStage.show();
@@ -1061,6 +1106,131 @@ public class MainController implements Initializable {
         clearSearchField();
 
         System.out.println("Shelves clicked - funkcja do zaimplementowania w przyszłości");
+    }
+
+    //NOTIFICATIONS
+    private void updateNotificationBadge(int count) {
+        Platform.runLater(() -> {
+            if (notificationBadge != null && notificationCountLabel != null) {
+                if (count > 0) {
+                    notificationBadge.setVisible(true);
+                    notificationCountLabel.setText(count > 9 ? "9+" : String.valueOf(count));
+                } else {
+                    notificationBadge.setVisible(false);
+                }
+            }
+        });
+    }
+
+    private void toggleNotificationMenu() {
+        isNotificationMenuVisible = !isNotificationMenuVisible;
+
+        if (notificationDropdown != null) {
+            notificationDropdown.setVisible(isNotificationMenuVisible);
+
+            if (isNotificationMenuVisible) {
+                hideUserMenu();
+
+
+                notificationService.loadNotifications(false);
+                displayNotifications();
+
+
+                Timeline timeline = new Timeline(new KeyFrame(
+                        Duration.seconds(2),
+                        e -> markVisibleNotificationsAsRead()
+                ));
+                timeline.play();
+            }
+        }
+    }
+    private void displayNotifications() {
+        if (notificationsList == null) return;
+
+        notificationsList.getChildren().clear();
+
+        ObservableList<INotification> notifications = notificationService.getNotifications();
+
+        if (notifications.isEmpty()) {
+            Label emptyLabel = new Label("No notifications");
+            emptyLabel.setStyle("-fx-padding: 20; -fx-text-fill: #888;");
+            notificationsList.getChildren().add(emptyLabel);
+        } else {
+            for (INotification notification : notifications) {
+                VBox notificationItem = createNotificationItem(notification);
+                notificationsList.getChildren().add(notificationItem);
+            }
+        }
+    }
+
+    private VBox createNotificationItem(INotification notification) {
+        VBox item = new VBox(5);
+        item.setStyle("-fx-padding: 10; -fx-background-color: " +
+                (notification.isRead() ? "#f9f9f9" : "#fff") +
+                "; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
+
+        // Header with icon and time
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        Label iconLabel = new Label(notification.getIcon());
+        iconLabel.setStyle("-fx-font-size: 20;");
+
+        Label timeLabel = new Label(notification.getFormattedTime());
+        timeLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 11;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        header.getChildren().addAll(iconLabel, spacer, timeLabel);
+
+        // Title
+        Label titleLabel = new Label(notification.getTitle());
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13;");
+
+        // Message
+        Label messageLabel = new Label(notification.getMessage());
+        messageLabel.setWrapText(true);
+        messageLabel.setStyle("-fx-font-size: 12; -fx-text-fill: #555;");
+
+        item.getChildren().addAll(header, titleLabel, messageLabel);
+
+        // Click handler
+        item.setOnMouseClicked(event -> {
+            notification.handleClick(this);
+            hideNotificationMenu();
+        });
+
+        // Hover effect
+        item.setOnMouseEntered(e -> item.setStyle(item.getStyle() +
+                "; -fx-background-color: #f0f0f0; -fx-cursor: hand;"));
+        item.setOnMouseExited(e -> item.setStyle(item.getStyle().replace(
+                "; -fx-background-color: #f0f0f0; -fx-cursor: hand;", "")));
+
+        return item;
+    }
+
+    private void markVisibleNotificationsAsRead() {
+        ObservableList<INotification> notifications = notificationService.getNotifications();
+        List<Integer> unreadIds = new ArrayList<>();
+
+        for (INotification notif : notifications) {
+            if (!notif.isRead()) {
+                unreadIds.add(notif.getNotificationId());
+            }
+        }
+
+        if (!unreadIds.isEmpty()) {
+            notificationService.markAsRead(unreadIds);
+        }
+    }
+
+
+    private void hideNotificationMenu() {
+        isNotificationMenuVisible = false;
+        if (notificationDropdown != null) {
+            notificationDropdown.setVisible(false);
+        }
     }
 
 }
