@@ -419,7 +419,7 @@ public class ClientHandler implements Runnable {
                 return new Response(ResponseType.ERROR, "Review not found");
             }
 
-            dbManager.addComment(comment.getUsername(), comment.getReviewId(), comment.getContent());
+            dbManager.addCommentWithNotification(comment.getUsername(), comment.getReviewId(), comment.getContent());
             return new Response(ResponseType.SUCCESS, "Comment added successfully");
 
         } catch (SQLException e) {
