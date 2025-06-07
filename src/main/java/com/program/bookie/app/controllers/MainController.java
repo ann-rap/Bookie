@@ -28,12 +28,8 @@ import java.util.*;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
-import com.program.bookie.app.controllers.StatisticsController;
-import java.io.ByteArrayInputStream;
 import java.util.stream.Collectors;
 
-import com.program.bookie.models.ImageData;
 import javafx.util.Duration;
 
 
@@ -91,9 +87,9 @@ public class MainController implements Initializable {
     @FXML
     private VBox reviewsContainer;
 
-    @FXML private ImageView bellImage;
+    @FXML private Button bellButton;
     @FXML private StackPane notificationBadge;
-    @FXML private Label notificationCountLabel;
+    @FXML private Label countNLabel;
     @FXML private VBox notificationDropdown;
     @FXML private VBox notificationsList;
 
@@ -166,9 +162,7 @@ public class MainController implements Initializable {
             updateNotificationBadge(newCount.intValue());
         });
 
-        if (bellImage != null) {
-            bellImage.setOnMouseClicked(event -> toggleNotificationMenu());
-        }
+
 
     }
 
@@ -1111,17 +1105,17 @@ public class MainController implements Initializable {
     //NOTIFICATIONS
     private void updateNotificationBadge(int count) {
         Platform.runLater(() -> {
-            if (notificationBadge != null && notificationCountLabel != null) {
+            if (notificationBadge != null && countNLabel != null) {
                 if (count > 0) {
                     notificationBadge.setVisible(true);
-                    notificationCountLabel.setText(count > 9 ? "9+" : String.valueOf(count));
+                    countNLabel.setText(count > 9 ? "9+" : String.valueOf(count));
                 } else {
                     notificationBadge.setVisible(false);
                 }
             }
         });
     }
-
+    @FXML
     private void toggleNotificationMenu() {
         isNotificationMenuVisible = !isNotificationMenuVisible;
 

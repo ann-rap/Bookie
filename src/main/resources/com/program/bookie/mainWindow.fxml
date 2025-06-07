@@ -10,12 +10,12 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.text.Font?>
 
-<?import javafx.scene.layout.Region?>
 <AnchorPane prefHeight="600.0" prefWidth="1000.0" style="-fx-background-color: #E9E9E9;" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.MainController">
    <children>
       <AnchorPane prefHeight="116.0" prefWidth="1000.0" style="-fx-background-color: #839174;">
@@ -88,7 +88,7 @@
             </Button>
             <StackPane fx:id="notificationBadge" layoutX="866.0" layoutY="55.0" mouseTransparent="true" prefHeight="50.0" prefWidth="49.0">
                <children>
-                  <Button fx:id="bellButton" mnemonicParsing="false" prefHeight="59.0" prefWidth="61.0" style="-fx-background-color: transparent;">
+                  <Button fx:id="bellButton" mnemonicParsing="false" onAction="#toggleNotificationMenu" prefHeight="59.0" prefWidth="61.0" style="-fx-background-color: transparent;">
                      <graphic>
                         <ImageView fx:id="bellImage" fitHeight="42.0" fitWidth="42.0" pickOnBounds="true" preserveRatio="true">
                            <image>
@@ -326,22 +326,16 @@
          </Button>
       </VBox>
 
-      <VBox fx:id="notificationDropdown" layoutX="690.0" layoutY="108.0" prefHeight="400.0" prefWidth="300.0"
-            style="-fx-background-color: #ffffff; -fx-border-color: #839174; -fx-border-width: 2;
-             -fx-border-radius: 8; -fx-background-radius: 8;
-             -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 5);"
-            visible="false">
+      <VBox fx:id="notificationDropdown" layoutX="690.0" layoutY="108.0" prefHeight="400.0" prefWidth="300.0" style="-fx-background-color: #ffffff; -fx-border-color: #839174; -fx-border-width: 2;              -fx-border-radius: 8; -fx-background-radius: 8;              -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 5);" visible="false">
 
          <HBox alignment="CENTER_LEFT" prefHeight="50" style="-fx-padding: 10 15; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
-            <Label text="Notifications" style="-fx-font-weight: bold; -fx-font-size: 16;">
+            <Label style="-fx-font-weight: bold; -fx-font-size: 16;" text="Notifications">
                <font>
                   <Font name="Bookman Old Style" size="16.0" />
                </font>
             </Label>
             <Region HBox.hgrow="ALWAYS" />
-            <Button text="Clear All" onAction="#onClearNotificationsClicked"
-                    style="-fx-background-color: transparent; -fx-text-fill: #839174;
-                       -fx-underline: true; -fx-cursor: hand;" />
+            <Button onAction="#onClearNotificationsClicked" style="-fx-background-color: transparent; -fx-text-fill: #839174;                        -fx-underline: true; -fx-cursor: hand;" text="Clear All" />
          </HBox>
 
          <ScrollPane fitToWidth="true" prefHeight="350" style="-fx-background-color: transparent;">
