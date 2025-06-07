@@ -86,23 +86,32 @@
                   </ImageView>
                </graphic>
             </Button>
-            <StackPane fx:id="notificationBadge" layoutX="866.0" layoutY="55.0" mouseTransparent="true" prefHeight="50.0" prefWidth="49.0">
+
+            <StackPane layoutX="866.0" layoutY="55.0" prefHeight="50.0" prefWidth="49.0">
                <children>
-                  <Button fx:id="bellButton" mnemonicParsing="false" onAction="#toggleNotificationMenu" prefHeight="59.0" prefWidth="61.0" style="-fx-background-color: transparent;">
+                  <!-- Bell Button -->
+                  <Button fx:id="bellButton" mnemonicParsing="false" onAction="#toggleNotificationMenu"
+                          prefHeight="59.0" prefWidth="61.0" style="-fx-background-color: transparent;">
                      <graphic>
-                        <ImageView fx:id="bellImage" fitHeight="42.0" fitWidth="42.0" pickOnBounds="true" preserveRatio="true">
+                        <ImageView fx:id="bellImage" fitHeight="42.0" fitWidth="42.0"
+                                   pickOnBounds="true" preserveRatio="true">
                            <image>
                               <Image url="@../../../img/bell.png" />
                            </image>
                         </ImageView>
                      </graphic>
                   </Button>
-                  <StackPane alignment="TOP_LEFT" prefHeight="57.0" prefWidth="56.0">
+
+                  <!-- Notification Badge (overlay) -->
+                  <StackPane fx:id="notificationBadge" alignment="TOP_RIGHT"
+                             mouseTransparent="true" visible="false"
+                             maxHeight="20" maxWidth="20" translateX="15" translateY="-5">
                      <children>
                         <Circle fill="#c44e4e" radius="10.0" stroke="#c44e4e" strokeType="INSIDE" />
-                        <Label fx:id="countNLabel" alignment="CENTER" contentDisplay="CENTER" prefHeight="22.0" prefWidth="20.0" text="0" textAlignment="CENTER" textFill="WHITE" translateY="-1.0">
+                        <Label fx:id="countNLabel" alignment="CENTER"
+                               text="0" textFill="WHITE">
                            <font>
-                              <Font name="System Bold" size="13.0" />
+                              <Font name="System Bold" size="11.0" />
                            </font>
                         </Label>
                      </children>

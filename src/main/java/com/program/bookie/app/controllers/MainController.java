@@ -113,9 +113,24 @@ public class MainController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         client.clearImageCache();
         notificationService = NotificationService.getInstance();
+        System.out.println("NotificationService started");
         setHover(homeButton);
         setHover(statisticsButton);
         setHover(shelfButton);
+
+        System.out.println("bellButton: " + bellButton);
+        System.out.println("notificationBadge: " + notificationBadge);
+        System.out.println("notificationCountLabel: " + countNLabel);
+
+        // Set up bell click handler
+        if (bellButton != null) {
+            bellButton.setOnAction(event -> {
+                System.out.println("Bell button clicked!");
+                toggleNotificationMenu();
+            });
+        } else {
+            System.err.println("bellButton is NULL!");
+        }
 
         /// shutdownHook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -1117,6 +1132,7 @@ public class MainController implements Initializable {
     }
     @FXML
     private void toggleNotificationMenu() {
+        System.out.println("Toggle notification menu");
         isNotificationMenuVisible = !isNotificationMenuVisible;
 
         if (notificationDropdown != null) {
