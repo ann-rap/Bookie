@@ -108,6 +108,12 @@ public class ClientHandler implements Runnable {
                 return handleGetReviewComments(request);
             case ADD_COMMENT:
                 return handleAddComment(request);
+            case GET_USER_BOOKS_BY_STATUS:
+                return handleGetUserBooksByStatus(request);
+            case GET_BOOK_PROGRESS:
+                return handleGetBookProgress(request);
+            case UPDATE_BOOK_PROGRESS:
+                return handleUpdateBookProgress(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -215,6 +221,7 @@ public class ClientHandler implements Runnable {
             }
 
             dbManager.updateStatus(username, bookId, status);
+
             return new Response(ResponseType.SUCCESS, "Reading status updated successfully");
 
         } catch (SQLException e) {
@@ -455,6 +462,87 @@ public class ClientHandler implements Runnable {
         } catch (Exception e) {
             System.err.println("Unexpected error in handleGetImage: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Unexpected error: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetUserBooksByStatus(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            String status = (String) data.get("status");
+
+            System.out.println("handleGetUserBooksByStatus - username: " + username + ", status: " + status);
+
+            if (username == null || status == null) {
+                return new Response(ResponseType.ERROR, "Missing username or status");
+            }
+
+            List<Book> userBooks = dbManager.getUserBooksByStatus(username, status);
+            System.out.println("Found " + userBooks.size() + " books for status: " + status);
+            return new Response(ResponseType.SUCCESS, userBooks);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetUserBooksByStatus: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetUserBooksByStatus: " + e.getMessage());
+            e.printStackTrace();
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetBookProgress(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
+
+            if (username == null || bookId == null) {
+                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            }
+
+            BookProgress progress = dbManager.getBookProgress(username, bookId);
+            return new Response(ResponseType.SUCCESS, progress);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetBookProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetBookProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleUpdateBookProgress(Request request) {
+        try {
+            BookProgress progress = (BookProgress) request.getData();
+
+            if (progress.getUsername() == null || progress.getBookId() == 0) {
+                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            }
+
+            if (progress.getCurrentPage() < 0 || progress.getTotalPages() <= 0 ||
+                    progress.getCurrentPage() > progress.getTotalPages()) {
+                return new Response(ResponseType.ERROR, "Invalid page numbers");
+            }
+
+            dbManager.updateBookProgress(
+                    progress.getUsername(),
+                    progress.getBookId(),
+                    progress.getCurrentPage(),
+                    progress.getTotalPages()
+            );
+
+            return new Response(ResponseType.SUCCESS, "Book progress updated successfully");
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleUpdateBookProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleUpdateBookProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 

@@ -345,8 +345,16 @@ public class SearchController {
                 if ("Read".equals(selectedStatus)) {
                     openReviewWindow(currentBook, currentUsername);
                 }
+
+                if (mainController != null) {
+                    mainController.refreshShelvesIfNeeded();
+                }
+
                 setComboBoxStyle(false);
-            } else {
+
+            }
+
+            else {
                 System.err.println("Error updating reading status: " + response.getData());
             }
 

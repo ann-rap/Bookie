@@ -2,6 +2,9 @@ package com.program.bookie.app.controllers;
 
 import com.program.bookie.client.Client;
 import com.program.bookie.models.*;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -9,10 +12,7 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
@@ -25,15 +25,13 @@ import javafx.stage.Stage;
 import javafx.scene.Parent;
 import javafx.stage.StageStyle;
 import javafx.application.Platform;
+import javafx.scene.layout.StackPane;
+import javafx.util.Duration;
 
 import java.util.*;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
-import com.program.bookie.app.controllers.StatisticsController;
-import java.io.ByteArrayInputStream;
-import com.program.bookie.models.ImageData;
 
 
 public class MainController implements Initializable {
@@ -86,14 +84,68 @@ public class MainController implements Initializable {
     private Label quoteLabel;
 
     @FXML
-
     private Pane statisticsPane;
+    @FXML
     private VBox reviewsContainer;
 
     private boolean isUserMenuVisible = false;
 
     private Client client = Client.getInstance();
     private User currentUser;
+
+    @FXML
+    private Pane shelvesPane;
+    @FXML
+    private HBox currentlyReadingContainer, readContainer, wantToReadContainer;
+    @FXML
+    private Label currentlyReadingCount, readCount, wantToReadCount;
+
+    @FXML private ScrollPane currentlyReadingScrollPane;
+    @FXML private ScrollPane wantToReadScrollPane;
+    @FXML private ScrollPane readScrollPane;
+
+    @FXML private Button currentlyReadingLeftButton;
+    @FXML private Button currentlyReadingRightButton;
+    @FXML private Button wantToReadLeftButton;
+    @FXML private Button wantToReadRightButton;
+    @FXML private Button readLeftButton;
+    @FXML private Button readRightButton;
+
+    @FXML
+    private void scrollCurrentlyReadingLeft() {
+        scrollHorizontally(currentlyReadingScrollPane, -200);
+        updateScrollButtons(currentlyReadingScrollPane, currentlyReadingLeftButton, currentlyReadingRightButton);
+    }
+
+    @FXML
+    private void scrollCurrentlyReadingRight() {
+        scrollHorizontally(currentlyReadingScrollPane, 200);
+        updateScrollButtons(currentlyReadingScrollPane, currentlyReadingLeftButton, currentlyReadingRightButton);
+    }
+    @FXML
+    private void scrollWantToReadLeft() {
+        scrollHorizontally(wantToReadScrollPane, -200);
+        updateScrollButtons(wantToReadScrollPane, wantToReadLeftButton, wantToReadRightButton);
+    }
+
+    @FXML
+    private void scrollWantToReadRight() {
+        scrollHorizontally(wantToReadScrollPane, 200);
+        updateScrollButtons(wantToReadScrollPane, wantToReadLeftButton, wantToReadRightButton);
+    }
+    @FXML
+    private void scrollReadLeft() {
+        scrollHorizontally(readScrollPane, -200);
+        updateScrollButtons(readScrollPane, readLeftButton, readRightButton);
+    }
+
+    @FXML
+    private void scrollReadRight() {
+        scrollHorizontally(readScrollPane, 200);
+        updateScrollButtons(readScrollPane, readLeftButton, readRightButton);
+    }
+
+    private StatisticsController currentStatisticsController;
 
     public void setCurrentUser(User user) {
         this.currentUser = user;
@@ -149,7 +201,8 @@ public class MainController implements Initializable {
             logoutButton.setOnMouseExited(e ->
                     logoutButton.setStyle("-fx-background-color: transparent; -fx-alignment: center-left; -fx-padding: 10 16; -fx-text-fill: #615252; -fx-border-color: transparent;"));
         }
-
+        setupScrollListeners();
+        setupMouseWheelScrolling();
     }
 
     //MENU
@@ -496,6 +549,7 @@ public class MainController implements Initializable {
                 homePane.setVisible(false);
                 bookDetailsPane.setVisible(false);
                 statisticsPane.setVisible(false);
+                shelvesPane.setVisible(false);
             } else {
                 System.err.println("Search failed: " + response.getData());
             }
@@ -514,6 +568,7 @@ public class MainController implements Initializable {
         searchPane.setVisible(false);
         bookDetailsPane.setVisible(false);
         statisticsPane.setVisible(false);
+        shelvesPane.setVisible(false); // DODANE - naprawia problem z Home
     }
 
     //BOOK DETAILS
@@ -592,6 +647,7 @@ public class MainController implements Initializable {
             searchPane.setVisible(false);
             bookDetailsPane.setVisible(true);
             statisticsPane.setVisible(false);
+            shelvesPane.setVisible(false);
         }
 
 
@@ -607,6 +663,8 @@ public class MainController implements Initializable {
         homePane.setVisible(false);
         searchPane.setVisible(false);
         bookDetailsPane.setVisible(true);
+        statisticsPane.setVisible(false);
+        shelvesPane.setVisible(false);
     }
 
     private void setDefaultDetailsCoverImage() {
@@ -775,6 +833,8 @@ public class MainController implements Initializable {
             if (response.getType() == ResponseType.SUCCESS) {
                 System.out.println("Reading status updated successfully to: " + selectedStatus);
 
+                refreshShelvesIfNeeded();
+
                 if ("Read".equals(selectedStatus)) {
                     openReviewWindow(currentBookDetails, currentUser.getUsername());
                 }
@@ -893,8 +953,8 @@ public class MainController implements Initializable {
         }
     }
 
- /**Inteligentne ładowanie okładki: cache -> serwer -> lokalne zasoby
- */
+    /**Inteligentne ładowanie okładki: cache -> serwer -> lokalne zasoby
+     */
     private void loadBookCoverSmart(Book book, ImageView imageView) {
         String imagePath = book.getCoverImagePath();
         if (imagePath == null || imagePath.isEmpty()) {
@@ -1005,6 +1065,7 @@ public class MainController implements Initializable {
         homePane.setVisible(false);
         searchPane.setVisible(false);
         bookDetailsPane.setVisible(false);
+        shelvesPane.setVisible(false);
     }
 
     private void loadStatisticsPane() {
@@ -1039,6 +1100,8 @@ public class MainController implements Initializable {
 
             System.out.println("Statistics controller found");
 
+            // Zapisz referencję do controllera
+            currentStatisticsController = statisticsController;
             statisticsController.setCurrentUser(currentUser);
 
             statisticsPane.getChildren().clear();
@@ -1056,11 +1119,472 @@ public class MainController implements Initializable {
         }
     }
 
-    public void onShelfClicked() {
+    public void onShelvesClicked() {
         hideUserMenu();
         clearSearchField();
 
-        System.out.println("Shelves clicked - funkcja do zaimplementowania w przyszłości");
+        loadRandomQuote();
+        loadUserShelves();
+
+        homePane.setVisible(false);
+        searchPane.setVisible(false);
+        bookDetailsPane.setVisible(false);
+        statisticsPane.setVisible(false);
+        shelvesPane.setVisible(true);
     }
 
+    private void loadUserShelves() {
+        if (currentUser == null) return;
+
+        try {
+            if (currentlyReadingContainer != null) currentlyReadingContainer.getChildren().clear();
+            if (readContainer != null) readContainer.getChildren().clear();
+            if (wantToReadContainer != null) wantToReadContainer.getChildren().clear();
+
+            loadShelfItems(currentlyReadingContainer, currentlyReadingCount, "Currently reading");
+            loadShelfItems(readContainer, readCount, "Read");
+            loadShelfItems(wantToReadContainer, wantToReadCount, "Want to read");
+
+            updateAllScrollButtons();
+            refreshShelvesIfNeeded();
+
+        } catch (Exception e) {
+            System.err.println("Error loading user shelves: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void loadShelfItems(HBox container, Label countLabel, String status) {
+        if (currentUser == null) return;
+
+        new Thread(() -> {
+            try {
+                Map<String, Object> data = new HashMap<>();
+                data.put("username", currentUser.getUsername());
+                data.put("status", status);
+
+                Request request = new Request(RequestType.GET_USER_BOOKS_BY_STATUS, data);
+                Response response = client.sendRequest(request);
+
+                if (response.getType() == ResponseType.SUCCESS) {
+                    @SuppressWarnings("unchecked")
+                    List<Book> books = (List<Book>) response.getData();
+
+                    Platform.runLater(() -> {
+                        container.getChildren().clear();
+
+                        if (books.isEmpty()) {
+                            Label emptyLabel = new Label("No books on this shelf yet");
+                            emptyLabel.setStyle("-fx-text-fill: #999999; -fx-font-size: 14px; -fx-padding: 40;");
+                            container.getChildren().add(emptyLabel);
+                            container.setAlignment(Pos.CENTER);
+                        } else {
+                            container.setAlignment(Pos.CENTER_LEFT);
+                            container.setSpacing(12);
+                            container.setPadding(new Insets(15));
+
+                            for (Book book : books) {
+                                try {
+                                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/shelfItem.fxml"));
+                                    VBox shelfItem = loader.load();
+
+                                    // Zwiększ wysokość elementu półki
+                                    shelfItem.setPrefHeight(340); // ZWIĘKSZONE z 320 do 340
+                                    shelfItem.setMaxHeight(340);
+
+                                    ShelfItemController controller = loader.getController();
+                                    controller.setData(book, currentUser.getUsername(), status, this);
+
+                                    container.getChildren().add(shelfItem);
+
+                                } catch (Exception e) {
+                                    System.err.println("Error loading shelf item: " + e.getMessage());
+                                }
+                            }
+                        }
+
+                        if (countLabel != null) {
+                            countLabel.setText("(" + books.size() + ")");
+                            if (books.size() == 0) {
+                                countLabel.setStyle("-fx-text-fill: #999999;");
+                            } else {
+                                countLabel.setStyle("-fx-text-fill: #658C4C; -fx-font-weight: bold;");
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("Error loading shelf items: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private VBox createShelfBookCard(Book book) {
+        VBox bookCard = new VBox();
+        bookCard.setAlignment(Pos.CENTER);
+        bookCard.setSpacing(8);
+        bookCard.setPadding(new Insets(12));
+        bookCard.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 4, 0, 0, 2);");
+        bookCard.setPrefWidth(160);
+        bookCard.setPrefHeight(340);
+
+        ImageView coverImageView = new ImageView();
+        coverImageView.setFitWidth(130);
+        coverImageView.setFitHeight(170);
+        coverImageView.setPreserveRatio(true);
+        loadBookCoverForShelf(book, coverImageView);
+
+        VBox progressContainer = new VBox();
+        progressContainer.setAlignment(Pos.CENTER);
+        progressContainer.setSpacing(4);
+        progressContainer.setPrefWidth(130);
+
+        Pane progressBackground = new Pane();
+        progressBackground.setPrefWidth(120);
+        progressBackground.setPrefHeight(12);
+        progressBackground.setStyle("-fx-background-color: white; -fx-background-radius: 6; -fx-border-color: #658C4C; -fx-border-width: 2; -fx-border-radius: 6;");
+
+        Pane progressFill = new Pane();
+        progressFill.setPrefHeight(8);
+        progressFill.setStyle("-fx-background-color: #658C4C; -fx-background-radius: 4;");
+        progressFill.setPrefWidth(0);
+
+        StackPane progressStack = new StackPane();
+        progressStack.setPrefWidth(120);
+        progressStack.setPrefHeight(12);
+        progressStack.getChildren().addAll(progressBackground, progressFill);
+        progressStack.setAlignment(Pos.CENTER_LEFT);
+
+        Label progressLabel = new Label("0%");
+        progressLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        progressLabel.setStyle("-fx-text-fill: #658C4C; -fx-font-weight: bold;");
+
+        progressContainer.getChildren().addAll(progressStack, progressLabel);
+
+        Label titleLabel = new Label(book.getTitle());
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 11));
+        titleLabel.setWrapText(true);
+        titleLabel.setMaxWidth(140);
+        titleLabel.setAlignment(Pos.CENTER);
+        titleLabel.setStyle("-fx-text-alignment: center;");
+        titleLabel.setPrefHeight(30);
+
+        Label authorLabel = new Label("by " + book.getAuthor());
+        authorLabel.setFont(Font.font("System", FontWeight.NORMAL, 11)); // Zwiększony rozmiar
+        authorLabel.setStyle("-fx-text-fill: #666666;");
+        authorLabel.setWrapText(true);
+        authorLabel.setMaxWidth(140);
+        authorLabel.setAlignment(Pos.CENTER);
+        authorLabel.setPrefHeight(25);
+
+        bookCard.getChildren().addAll(coverImageView, progressContainer, titleLabel, authorLabel);
+
+        loadBookProgress(book, progressFill, progressLabel, progressBackground);
+
+        bookCard.setOnMouseEntered(e -> {
+            bookCard.setStyle("-fx-background-color: #f0f0f0; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 6, 0, 0, 3);");
+        });
+
+        bookCard.setOnMouseExited(e -> {
+            bookCard.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 4, 0, 0, 2);");
+        });
+
+        coverImageView.setOnMouseClicked(e -> {
+            System.out.println("Clicked on shelf book: " + book.getTitle());
+            showBookDetails(book);
+        });
+
+        progressStack.setOnMouseClicked(e -> {
+            openProgressEditDialog(book, progressFill, progressLabel, progressBackground);
+        });
+
+        progressStack.setStyle(progressStack.getStyle() + "; -fx-cursor: hand;");
+
+        return bookCard;
+    }
+
+    private void openProgressEditDialog(Book book, Pane progressFill, Label progressLabel, Pane progressBackground) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/progressEdit.fxml"));
+            AnchorPane progressPane = loader.load();
+
+            ProgressEditController controller = loader.getController();
+            controller.setBookData(book, currentUser.getUsername());
+            controller.setProgressUpdateCallback((newProgress) -> {
+                Platform.runLater(() -> {
+                    double percentage = newProgress.getProgressPercentage();
+                    updateProgressBar(progressFill, progressLabel, progressBackground, percentage);
+
+                    if (statisticsPane.isVisible() && currentStatisticsController != null) {
+                        currentStatisticsController.refreshStatistics();
+                    }
+                });
+            });
+
+            Stage progressStage = new Stage();
+            progressStage.initStyle(StageStyle.UNDECORATED);
+            progressStage.setScene(new Scene(progressPane, 450, 320));
+            progressStage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/icon.png"))));
+            progressStage.setResizable(false);
+
+            progressStage.show();
+
+        } catch (Exception e) {
+            System.err.println("Error opening progress edit dialog: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void loadBookProgress(Book book, Pane progressFill, Label progressLabel, Pane progressBackground) {
+        new Thread(() -> {
+            try {
+                Map<String, Object> data = new HashMap<>();
+                data.put("username", currentUser.getUsername());
+                data.put("bookId", book.getBookId());
+
+                Request request = new Request(RequestType.GET_BOOK_PROGRESS, data);
+                Response response = client.sendRequest(request);
+
+                Platform.runLater(() -> {
+                    if (response.getType() == ResponseType.SUCCESS) {
+                        BookProgress progress = (BookProgress) response.getData();
+                        if (progress != null) {
+                            double percentage = progress.getProgressPercentage();
+                            updateProgressBar(progressFill, progressLabel, progressBackground, percentage);
+                        } else {
+                            checkAndSetReadProgress(book, progressFill, progressLabel, progressBackground);
+                        }
+                    } else {
+                        checkAndSetReadProgress(book, progressFill, progressLabel, progressBackground);
+                    }
+                });
+
+            } catch (Exception e) {
+                System.err.println("Error loading book progress: " + e.getMessage());
+                Platform.runLater(() -> {
+                    checkAndSetReadProgress(book, progressFill, progressLabel, progressBackground);
+                });
+            }
+        }).start();
+    }
+
+    private void checkAndSetReadProgress(Book book, Pane progressFill, Label progressLabel, Pane progressBackground) {
+        new Thread(() -> {
+            try {
+                Map<String, Object> data = new HashMap<>();
+                data.put("username", currentUser.getUsername());
+                data.put("bookId", book.getBookId());
+
+                Request request = new Request(RequestType.GET_READING_STATUS, data);
+                Response response = client.sendRequest(request);
+
+                Platform.runLater(() -> {
+                    if (response.getType() == ResponseType.SUCCESS) {
+                        String status = (String) response.getData();
+                        if ("Read".equals(status)) {
+                            updateProgressBar(progressFill, progressLabel, progressBackground, 100.0);
+
+                        } else {
+                            updateProgressBar(progressFill, progressLabel, progressBackground, 0.0);
+                        }
+                    } else {
+                        updateProgressBar(progressFill, progressLabel, progressBackground, 0.0);
+                    }
+                });
+
+            } catch (Exception e) {
+                System.err.println("Error checking read status: " + e.getMessage());
+                Platform.runLater(() -> {
+                    updateProgressBar(progressFill, progressLabel, progressBackground, 0.0);
+                });
+            }
+        }).start();
+    }
+
+    private void updateProgressBar(Pane progressFill, Label progressLabel, Pane progressBackground, double percentage) {
+        if (percentage <= 0) {
+            progressFill.setPrefWidth(0);
+            progressBackground.setStyle("-fx-background-color: white; -fx-background-radius: 6; -fx-border-color: #658C4C; -fx-border-width: 2; -fx-border-radius: 6;");
+            progressLabel.setText("0%");
+        } else {
+            double fillWidth = (116.0 * percentage / 100.0);
+            progressFill.setPrefWidth(fillWidth);
+            progressBackground.setStyle("-fx-background-color: white; -fx-background-radius: 6; -fx-border-color: #658C4C; -fx-border-width: 2; -fx-border-radius: 6;");
+            progressLabel.setText(String.format("%.0f%%", percentage));
+        }
+    }
+
+    private void loadBookCoverForShelf(Book book, ImageView imageView) {
+        try {
+            String imagePath = book.getCoverImagePath();
+            if (imagePath != null && !imagePath.isEmpty()) {
+                String fullResourcePath = "/img/" + imagePath;
+                URL imageUrl = getClass().getResource(fullResourcePath);
+                if (imageUrl != null) {
+                    Image coverImage = new Image(imageUrl.toString());
+                    imageView.setImage(coverImage);
+                } else {
+                    setDefaultCoverImage(imageView);
+                }
+            } else {
+                setDefaultCoverImage(imageView);
+            }
+        } catch (Exception e) {
+            setDefaultCoverImage(imageView);
+        }
+    }
+
+    public void refreshShelvesIfNeeded() {
+        if (currentUser != null && shelvesPane != null && shelvesPane.isVisible()) {
+            loadUserShelves();
+        }
+
+        if (statisticsPane.isVisible() && currentStatisticsController != null) {
+            currentStatisticsController.refreshStatistics();
+        }
+    }
+
+    public void refreshShelvesAfterProgressUpdate() {
+        Platform.runLater(() -> {
+            refreshShelvesIfNeeded();
+        });
+    }
+
+    private void scrollHorizontally(ScrollPane scrollPane, double delta) {
+        if (scrollPane == null || scrollPane.getContent() == null) return;
+
+        double currentValue = scrollPane.getHvalue();
+        double maxValue = scrollPane.getHmax();
+        double viewportWidth = scrollPane.getViewportBounds().getWidth();
+        double contentWidth = scrollPane.getContent().getBoundsInLocal().getWidth();
+
+        if (contentWidth <= viewportWidth) return;
+
+        double scrollAmount = delta / (contentWidth - viewportWidth);
+        double newValue = Math.max(0, Math.min(1, currentValue + scrollAmount));
+
+        Timeline timeline = new Timeline();
+        KeyValue keyValue = new KeyValue(scrollPane.hvalueProperty(), newValue);
+        KeyFrame keyFrame = new KeyFrame(Duration.millis(200), keyValue);
+        timeline.getKeyFrames().add(keyFrame);
+        timeline.play();
+    }
+
+    private void updateScrollButtons(ScrollPane scrollPane, Button leftButton, Button rightButton) {
+        if (scrollPane == null || scrollPane.getContent() == null) return;
+
+        Platform.runLater(() -> {
+            double contentWidth = scrollPane.getContent().getBoundsInLocal().getWidth();
+            double viewportWidth = scrollPane.getViewportBounds().getWidth();
+
+            boolean needsScrolling = contentWidth > viewportWidth;
+
+            if (!needsScrolling) {
+                leftButton.setVisible(false);
+                rightButton.setVisible(false);
+                return;
+            }
+
+            double currentValue = scrollPane.getHvalue();
+
+            leftButton.setVisible(currentValue > 0.01);
+            rightButton.setVisible(currentValue < 0.99);
+        });
+    }
+
+    private void updateAllScrollButtons() {
+        Platform.runLater(() -> {
+            Timeline timeline = new Timeline(new KeyFrame(Duration.millis(100), e -> {
+                updateScrollButtons(currentlyReadingScrollPane, currentlyReadingLeftButton, currentlyReadingRightButton);
+                updateScrollButtons(wantToReadScrollPane, wantToReadLeftButton, wantToReadRightButton);
+                updateScrollButtons(readScrollPane, readLeftButton, readRightButton);
+            }));
+            timeline.play();
+        });
+    }
+    private void setupScrollListeners() {
+        if (currentlyReadingScrollPane != null) {
+            currentlyReadingScrollPane.hvalueProperty().addListener((obs, oldVal, newVal) -> {
+                updateScrollButtons(currentlyReadingScrollPane, currentlyReadingLeftButton, currentlyReadingRightButton);
+            });
+
+            currentlyReadingScrollPane.getContent().boundsInLocalProperty().addListener((obs, oldBounds, newBounds) -> {
+                Platform.runLater(() -> updateScrollButtons(currentlyReadingScrollPane, currentlyReadingLeftButton, currentlyReadingRightButton));
+            });
+
+            currentlyReadingScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+                Platform.runLater(() -> updateScrollButtons(currentlyReadingScrollPane, currentlyReadingLeftButton, currentlyReadingRightButton));
+            });
+        }
+
+        if (wantToReadScrollPane != null) {
+            wantToReadScrollPane.hvalueProperty().addListener((obs, oldVal, newVal) -> {
+                updateScrollButtons(wantToReadScrollPane, wantToReadLeftButton, wantToReadRightButton);
+            });
+
+            wantToReadScrollPane.getContent().boundsInLocalProperty().addListener((obs, oldBounds, newBounds) -> {
+                Platform.runLater(() -> updateScrollButtons(wantToReadScrollPane, wantToReadLeftButton, wantToReadRightButton));
+            });
+
+            wantToReadScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+                Platform.runLater(() -> updateScrollButtons(wantToReadScrollPane, wantToReadLeftButton, wantToReadRightButton));
+            });
+        }
+
+        if (readScrollPane != null) {
+            readScrollPane.hvalueProperty().addListener((obs, oldVal, newVal) -> {
+                updateScrollButtons(readScrollPane, readLeftButton, readRightButton);
+            });
+
+            readScrollPane.getContent().boundsInLocalProperty().addListener((obs, oldBounds, newBounds) -> {
+                Platform.runLater(() -> updateScrollButtons(readScrollPane, readLeftButton, readRightButton));
+            });
+
+            readScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+                Platform.runLater(() -> updateScrollButtons(readScrollPane, readLeftButton, readRightButton));
+            });
+        }
+    }
+    private void setupMouseWheelScrolling() {
+        if (currentlyReadingScrollPane != null) {
+            currentlyReadingScrollPane.setOnScroll(event -> {
+                if (event.isShiftDown()) {
+                    double deltaY = event.getDeltaY();
+                    double width = currentlyReadingScrollPane.getContent().getBoundsInLocal().getWidth();
+                    double hvalue = currentlyReadingScrollPane.getHvalue();
+
+                    currentlyReadingScrollPane.setHvalue(hvalue - deltaY / width);
+                    event.consume();
+                }
+            });
+        }
+
+        if (wantToReadScrollPane != null) {
+            wantToReadScrollPane.setOnScroll(event -> {
+                if (event.isShiftDown()) {
+                    double deltaY = event.getDeltaY();
+                    double width = wantToReadScrollPane.getContent().getBoundsInLocal().getWidth();
+                    double hvalue = wantToReadScrollPane.getHvalue();
+
+                    wantToReadScrollPane.setHvalue(hvalue - deltaY / width);
+                    event.consume();
+                }
+            });
+        }
+
+        if (readScrollPane != null) {
+            readScrollPane.setOnScroll(event -> {
+                if (event.isShiftDown()) {
+                    double deltaY = event.getDeltaY();
+                    double width = readScrollPane.getContent().getBoundsInLocal().getWidth();
+                    double hvalue = readScrollPane.getHvalue();
+
+                    readScrollPane.setHvalue(hvalue - deltaY / width);
+                    event.consume();
+                }
+            });
+        }
+    }
 }
+
+

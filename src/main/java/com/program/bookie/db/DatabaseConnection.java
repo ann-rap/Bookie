@@ -15,7 +15,7 @@ import com.program.bookie.models.ReadingInsights;
 public class DatabaseConnection {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/bookie";
     private static final String USERNAME = "root";
-    private static final String PASSWORD = "hasloProgram";
+    private static final String PASSWORD = "";
 
     private Connection connection;
     private QuoteService quoteService;
@@ -23,7 +23,40 @@ public class DatabaseConnection {
     public DatabaseConnection() throws SQLException {
         this.connection = DriverManager.getConnection(DB_URL, USERNAME, PASSWORD);
         this.quoteService = new QuoteService();
+        createBookProgressTableIfNotExists();
+        createReadingCountTableIfNotExists();
     }
+
+    /**
+     * Dodaj tabele dla zliczania przeczytanych razy jeśli nie istnieją
+     */
+    private void createReadingCountTableIfNotExists() {
+        try {
+            String createTableSQL = """
+        CREATE TABLE IF NOT EXISTS book_reading_count (
+            count_id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id INT NOT NULL,
+            book_id INT NOT NULL,
+            times_read INT DEFAULT 1,
+            last_read_date DATE DEFAULT (CURRENT_DATE),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES user_account(account_id) ON DELETE CASCADE,
+            FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE,
+            UNIQUE KEY unique_user_book_count (user_id, book_id)
+        )
+        """;
+
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute(createTableSQL);
+                System.out.println("✅ Table book_reading_count created or already exists");
+            }
+
+        } catch (SQLException e) {
+            System.err.println("⚠️ Error creating book_reading_count table: " + e.getMessage());
+        }
+    }
+
 
     /*
     Zatwierdzenie logowania, zwraca uzytkownika jesli sie uda.
@@ -97,11 +130,11 @@ public class DatabaseConnection {
         SELECT b.book_id, b.title, b.author, b.cover_image, 
                COALESCE(AVG(r.rating), 0) as avg_rating,
                COUNT(r.rating) as rating_count,
-               b.description, b.genre, b.publication_year
+               b.description, b.genre, b.publication_year, b.pages
         FROM books b 
         LEFT JOIN reviews r ON b.book_id = r.book_id 
         GROUP BY b.book_id, b.title, b.author, b.cover_image, 
-                 b.description, b.genre, b.publication_year
+                 b.description, b.genre, b.publication_year, b.pages
         ORDER BY avg_rating DESC, rating_count DESC 
         LIMIT ?
         """;
@@ -122,7 +155,8 @@ public class DatabaseConnection {
                         rs.getInt("rating_count"),
                         rs.getString("description"),
                         rs.getString("genre"),
-                        rs.getInt("publication_year")
+                        rs.getInt("publication_year"),
+                        rs.getInt("pages")
                 );
                 topBooks.add(book);
             }
@@ -179,12 +213,12 @@ public class DatabaseConnection {
         SELECT b.book_id, b.title, b.author, b.cover_image, 
                COALESCE(AVG(r.rating), 0) as avg_rating,
                COUNT(r.rating) as rating_count,
-               b.description, b.genre, b.publication_year
+               b.description, b.genre, b.publication_year, b.pages
         FROM books b 
         LEFT JOIN reviews r ON b.book_id = r.book_id 
         WHERE title LIKE ?
         GROUP BY b.book_id, b.title, b.author, b.cover_image, 
-                 b.description, b.genre, b.publication_year ORDER BY avg_rating DESC 
+                 b.description, b.genre, b.publication_year, b.pages ORDER BY avg_rating DESC 
 """;
         PreparedStatement stmt = connection.prepareStatement(sql);
         stmt.setString(1, "%" + title + "%");
@@ -201,7 +235,8 @@ public class DatabaseConnection {
                     rs.getInt("rating_count"),
                     rs.getString("description"),
                     rs.getString("genre"),
-                    rs.getInt("publication_year")
+                    rs.getInt("publication_year"),
+                    rs.getInt("pages")
             ));
         }
         return results;
@@ -234,38 +269,28 @@ public class DatabaseConnection {
         }
     }
 
-
-
-    /*
-    Zaktualizuj lub wstaw status
-    */
-    public void updateStatus(String username, int bookId, String newStatus) throws SQLException {
-        if (newStatus == null || newStatus.trim().isEmpty()) {
-            throw new IllegalArgumentException("Status cannot be null or empty");
-        }
-
-
-        String enumStatus = convertToEnumValue(newStatus);
-
-
-        LocalDate currentDate = LocalDate.now();
-
+    /**
+     * Aktualizuje licznik przeczytań książki
+     */
+    private void updateReadingCount(String username, int bookId) throws SQLException {
         String sqlCheck = """
-    SELECT 1 FROM user_books bu
-    INNER JOIN user_account ua ON bu.user_id = ua.account_id
-    WHERE ua.username = ? AND bu.book_id = ?
+    SELECT brc.times_read FROM book_reading_count brc
+    INNER JOIN user_account ua ON brc.user_id = ua.account_id
+    WHERE ua.username = ? AND brc.book_id = ?
     """;
 
         String sqlUpdate = """
-    UPDATE user_books bu
-    INNER JOIN user_account ua ON bu.user_id = ua.account_id
-    SET bu.reading_status = ?, bu.date_added = ?
-    WHERE ua.username = ? AND bu.book_id = ?
+    UPDATE book_reading_count brc
+    INNER JOIN user_account ua ON brc.user_id = ua.account_id
+    SET brc.times_read = brc.times_read + 1, 
+        brc.last_read_date = CURRENT_DATE,
+        brc.updated_at = CURRENT_TIMESTAMP
+    WHERE ua.username = ? AND brc.book_id = ?
     """;
 
         String sqlInsert = """
-    INSERT INTO user_books (user_id, book_id, reading_status, date_added)
-    SELECT ua.account_id, ?, ?, ?
+    INSERT INTO book_reading_count (user_id, book_id, times_read, last_read_date)
+    SELECT ua.account_id, ?, 1, CURRENT_DATE
     FROM user_account ua
     WHERE ua.username = ?
     """;
@@ -276,33 +301,25 @@ public class DatabaseConnection {
 
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next()) {
+                    // Rekord istnieje - zwiększ licznik
                     try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
-                        updateStmt.setString(1, enumStatus);
-                        updateStmt.setDate(2, java.sql.Date.valueOf(currentDate));
-                        updateStmt.setString(3, username.trim());
-                        updateStmt.setInt(4, bookId);
-                        int rowsUpdated = updateStmt.executeUpdate();
-                        if (rowsUpdated == 0) {
-                            throw new SQLException("Failed to update reading status");
-                        }
+                        updateStmt.setString(1, username.trim());
+                        updateStmt.setInt(2, bookId);
+                        updateStmt.executeUpdate();
+                        System.out.println("📚 Increased reading count for book " + bookId);
                     }
                 } else {
-
+                    // Nowy rekord
                     try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
                         insertStmt.setInt(1, bookId);
-                        insertStmt.setString(2, enumStatus);
-                        insertStmt.setDate(3, java.sql.Date.valueOf(currentDate));
-                        insertStmt.setString(4, username.trim());
-                        int rowsInserted = insertStmt.executeUpdate();
-                        if (rowsInserted == 0) {
-                            throw new SQLException("Failed to insert reading status");
-                        }
+                        insertStmt.setString(2, username.trim());
+                        insertStmt.executeUpdate();
+                        System.out.println("📚 Created new reading count for book " + bookId);
                     }
                 }
             }
         }
     }
-
 
     private String convertToDisplayValue(String enumValue) {
         if (enumValue == null) return null;
@@ -478,16 +495,19 @@ public class DatabaseConnection {
     /**
      * Pobiera statystyki uzytkownika
      */
+    /**
+     * Zaktualizowana metoda getUserStatistics z uwzględnieniem powtórzeń
+     */
     public UserStatistics getUserStatistics(String username) throws SQLException {
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username cannot be null or empty");
         }
 
         String userInfoSql = """
-        SELECT account_created_date, account_id
-        FROM user_account 
-        WHERE username = ?
-        """;
+    SELECT account_created_date, account_id
+    FROM user_account 
+    WHERE username = ?
+    """;
 
         LocalDate accountCreatedDate = LocalDate.now();
         int userId = -1;
@@ -508,13 +528,13 @@ public class DatabaseConnection {
         }
 
         String bookStatsSql = """
-        SELECT 
-            reading_status,
-            COUNT(*) as count
-        FROM user_books 
-        WHERE user_id = ?
-        GROUP BY reading_status
-        """;
+    SELECT 
+        reading_status,
+        COUNT(*) as count
+    FROM user_books 
+    WHERE user_id = ?
+    GROUP BY reading_status
+    """;
 
         int booksRead = 0;
         int booksCurrentlyReading = 0;
@@ -544,12 +564,12 @@ public class DatabaseConnection {
         }
 
         String reviewStatsSql = """
-        SELECT 
-            COUNT(*) as reviews_written,
-            COALESCE(AVG(rating), 0) as average_rating
-        FROM reviews 
-        WHERE user_id = ?
-        """;
+    SELECT 
+        COUNT(*) as reviews_written,
+        COALESCE(AVG(rating), 0) as average_rating
+    FROM reviews 
+    WHERE user_id = ?
+    """;
 
         int reviewsWritten = 0;
         double averageRating = 0.0;
@@ -565,8 +585,43 @@ public class DatabaseConnection {
             }
         }
 
-        //Jak na razie zakladamy 300 stron na ksiazke
-        int totalPagesRead = booksRead * 300;
+        int totalPagesRead = 0;
+
+        String readBooksSql = """
+        SELECT b.pages, COALESCE(brc.times_read, 1) as times_read
+        FROM user_books ub
+        INNER JOIN books b ON ub.book_id = b.book_id
+        LEFT JOIN book_reading_count brc ON ub.user_id = brc.user_id AND ub.book_id = brc.book_id
+        WHERE ub.user_id = ? AND ub.reading_status = 'read'
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(readBooksSql)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int bookPages = rs.getInt("pages");
+                    int timesRead = rs.getInt("times_read");
+                    totalPagesRead += (bookPages * timesRead);
+                }
+            }
+        }
+
+        String currentlyReadingSql = """
+        SELECT COALESCE(bp.current_page, 0) as current_page
+        FROM user_books ub
+        LEFT JOIN book_progress bp ON ub.user_id = bp.user_id AND ub.book_id = bp.book_id
+        WHERE ub.user_id = ? AND ub.reading_status = 'READING'
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(currentlyReadingSql)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int currentPage = rs.getInt("current_page");
+                    totalPagesRead += currentPage;
+                }
+            }
+        }
 
         return new UserStatistics(
                 booksRead,
@@ -577,6 +632,7 @@ public class DatabaseConnection {
                 averageRating,
                 accountCreatedDate
         );
+
     }
 
     /**
@@ -758,6 +814,41 @@ public class DatabaseConnection {
             }
         } catch (SQLException e) {
             System.err.println("Błąd zamykania połączenia: " + e.getMessage());
+        }
+    }
+
+    private void createBookProgressTableIfNotExists() {
+        try {
+            String createTableSQL = """
+            CREATE TABLE IF NOT EXISTS book_progress (
+                progress_id INT PRIMARY KEY AUTO_INCREMENT,
+                user_id INT NOT NULL,
+                book_id INT NOT NULL,
+                current_page INT DEFAULT 0,
+                total_pages INT DEFAULT 300,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES user_account(account_id) ON DELETE CASCADE,
+                FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE,
+                UNIQUE KEY unique_user_book (user_id, book_id)
+            )
+            """;
+
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute(createTableSQL);
+                System.out.println("✅ Table book_progress created or already exists");
+            }
+
+            // Dodaj kolumnę pages do books jeśli nie istnieje
+            String alterTableSQL = "ALTER TABLE books ADD COLUMN IF NOT EXISTS pages INT DEFAULT 300";
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute(alterTableSQL);
+                System.out.println("✅ Column pages added to books table or already exists");
+            }
+
+        } catch (SQLException e) {
+            System.err.println("⚠️ Error creating book_progress table: " + e.getMessage());
+            // Nie rzucaj wyjątku - aplikacja może działać bez tej tabeli
         }
     }
 
@@ -961,4 +1052,238 @@ public class DatabaseConnection {
         }
     }
 
+    /**
+     * Pobiera książki użytkownika według statusu (do półek)
+     */
+    public List<Book> getUserBooksByStatus(String username, String status) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        if (status == null || status.trim().isEmpty()) {
+            throw new IllegalArgumentException("Status cannot be null or empty");
+        }
+
+        String enumStatus = convertToEnumValue(status);
+
+        String sql = """
+        SELECT b.book_id, b.title, b.author, b.cover_image, 
+               COALESCE(AVG(r.rating), 0) as avg_rating,
+               COUNT(r.rating) as rating_count,
+               b.description, b.genre, b.publication_year, b.pages,
+               ub.date_added
+        FROM user_books ub
+        INNER JOIN user_account ua ON ub.user_id = ua.account_id
+        INNER JOIN books b ON ub.book_id = b.book_id
+        LEFT JOIN reviews r ON b.book_id = r.book_id
+        WHERE ua.username = ? AND ub.reading_status = ?
+        GROUP BY b.book_id, b.title, b.author, b.cover_image, 
+                 b.description, b.genre, b.publication_year, b.pages, ub.date_added
+        ORDER BY ub.date_added DESC
+        """;
+
+        List<Book> userBooks = new ArrayList<>();
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username.trim());
+            stmt.setString(2, enumStatus);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Book book = new Book(
+                            rs.getInt("book_id"),
+                            rs.getString("title"),
+                            rs.getString("author"),
+                            rs.getString("cover_image"),
+                            rs.getDouble("avg_rating"),
+                            rs.getInt("rating_count"),
+                            rs.getString("description"),
+                            rs.getString("genre"),
+                            rs.getInt("publication_year"),
+                            rs.getInt("pages")
+                    );
+                    userBooks.add(book);
+                }
+            }
+        }
+
+        return userBooks;
+    }
+
+    /**
+     * Pobiera postęp czytania dla książki użytkownika
+     */
+    public BookProgress getBookProgress(String username, int bookId) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        String sql = """
+        SELECT bp.progress_id, bp.user_id, bp.book_id, bp.current_page, bp.total_pages
+        FROM book_progress bp
+        INNER JOIN user_account ua ON bp.user_id = ua.account_id
+        WHERE ua.username = ? AND bp.book_id = ?
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username.trim());
+            stmt.setInt(2, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    BookProgress progress = new BookProgress();
+                    progress.setProgressId(rs.getInt("progress_id"));
+                    progress.setUserId(rs.getInt("user_id"));
+                    progress.setBookId(rs.getInt("book_id"));
+                    progress.setCurrentPage(rs.getInt("current_page"));
+                    progress.setTotalPages(rs.getInt("total_pages"));
+                    progress.setUsername(username);
+                    return progress;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Zapisuje lub aktualizuje postęp czytania
+     */
+    public void updateBookProgress(String username, int bookId, int currentPage, int totalPages) throws SQLException {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+
+        if (currentPage < 0 || totalPages <= 0 || currentPage > totalPages) {
+            throw new IllegalArgumentException("Invalid page numbers");
+        }
+
+        // Sprawdź czy postęp już istnieje
+        String sqlCheck = """
+        SELECT bp.progress_id FROM book_progress bp
+        INNER JOIN user_account ua ON bp.user_id = ua.account_id
+        WHERE ua.username = ? AND bp.book_id = ?
+        """;
+
+        String sqlUpdate = """
+        UPDATE book_progress bp
+        INNER JOIN user_account ua ON bp.user_id = ua.account_id
+        SET bp.current_page = ?, bp.total_pages = ?, bp.updated_at = CURRENT_TIMESTAMP
+        WHERE ua.username = ? AND bp.book_id = ?
+        """;
+
+        String sqlInsert = """
+        INSERT INTO book_progress (user_id, book_id, current_page, total_pages, created_at, updated_at)
+        SELECT ua.account_id, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        FROM user_account ua
+        WHERE ua.username = ?
+        """;
+
+        try (PreparedStatement checkStmt = connection.prepareStatement(sqlCheck)) {
+            checkStmt.setString(1, username.trim());
+            checkStmt.setInt(2, bookId);
+
+            try (ResultSet rs = checkStmt.executeQuery()) {
+                if (rs.next()) {
+                    // Postęp istnieje - aktualizuj
+                    try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
+                        updateStmt.setInt(1, currentPage);
+                        updateStmt.setInt(2, totalPages);
+                        updateStmt.setString(3, username.trim());
+                        updateStmt.setInt(4, bookId);
+
+                        int rowsUpdated = updateStmt.executeUpdate();
+                        if (rowsUpdated == 0) {
+                            throw new SQLException("Failed to update book progress");
+                        }
+                    }
+                } else {
+                    // Postęp nie istnieje - wstaw nowy
+                    try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
+                        insertStmt.setInt(1, bookId);
+                        insertStmt.setInt(2, currentPage);
+                        insertStmt.setInt(3, totalPages);
+                        insertStmt.setString(4, username.trim());
+
+                        int rowsInserted = insertStmt.executeUpdate();
+                        if (rowsInserted == 0) {
+                            throw new SQLException("Failed to insert book progress");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * Zaktualizuj lub wstaw status czytania książki
+     */
+    public void updateStatus(String username, int bookId, String newStatus) throws SQLException {
+        if (newStatus == null || newStatus.trim().isEmpty()) {
+            throw new IllegalArgumentException("Status cannot be null or empty");
+        }
+
+        String enumStatus = convertToEnumValue(newStatus);
+        LocalDate currentDate = LocalDate.now();
+
+        // Sprawdź poprzedni status
+        String previousStatus = getStatus(username, bookId);
+
+        String sqlCheck = """
+    SELECT 1 FROM user_books bu
+    INNER JOIN user_account ua ON bu.user_id = ua.account_id
+    WHERE ua.username = ? AND bu.book_id = ?
+    """;
+
+        String sqlUpdate = """
+    UPDATE user_books bu
+    INNER JOIN user_account ua ON bu.user_id = ua.account_id
+    SET bu.reading_status = ?, bu.date_added = ?
+    WHERE ua.username = ? AND bu.book_id = ?
+    """;
+
+        String sqlInsert = """
+    INSERT INTO user_books (user_id, book_id, reading_status, date_added)
+    SELECT ua.account_id, ?, ?, ?
+    FROM user_account ua
+    WHERE ua.username = ?
+    """;
+
+        try (PreparedStatement checkStmt = connection.prepareStatement(sqlCheck)) {
+            checkStmt.setString(1, username.trim());
+            checkStmt.setInt(2, bookId);
+
+            try (ResultSet rs = checkStmt.executeQuery()) {
+                if (rs.next()) {
+                    // Rekord istnieje - aktualizuj
+                    try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
+                        updateStmt.setString(1, enumStatus);
+                        updateStmt.setDate(2, java.sql.Date.valueOf(currentDate));
+                        updateStmt.setString(3, username.trim());
+                        updateStmt.setInt(4, bookId);
+                        int rowsUpdated = updateStmt.executeUpdate();
+                        if (rowsUpdated == 0) {
+                            throw new SQLException("Failed to update reading status");
+                        }
+                    }
+                } else {
+                    // Rekord nie istnieje - wstaw nowy
+                    try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
+                        insertStmt.setInt(1, bookId);
+                        insertStmt.setString(2, enumStatus);
+                        insertStmt.setDate(3, java.sql.Date.valueOf(currentDate));
+                        insertStmt.setString(4, username.trim());
+                        int rowsInserted = insertStmt.executeUpdate();
+                        if (rowsInserted == 0) {
+                            throw new SQLException("Failed to insert reading status");
+                        }
+                    }
+                }
+            }
+        }
+
+        // Jeśli książka została oznaczona jako "Read", zaktualizuj licznik przeczytań
+        if ("Read".equals(newStatus)) {
+            updateReadingCount(username, bookId);
+        }
+    }
 }

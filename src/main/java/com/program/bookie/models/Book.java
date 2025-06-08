@@ -12,6 +12,7 @@ public class Book implements Serializable {
     private String description;
     private String genre;
     private int publicationYear;
+    private int pages;
 
     public Book() {}
 
@@ -34,6 +35,13 @@ public class Book implements Serializable {
         this.publicationYear = publicationYear;
     }
 
+    public Book(int bookId, String title, String author, String coverImagePath,
+                double averageRating, int ratingCount, String description,
+                String genre, int publicationYear, int pages) {
+        this(bookId, title, author, coverImagePath, averageRating, ratingCount, description, genre, publicationYear);
+        this.pages = pages;
+    }
+
     // Getters
     public int getBookId() { return bookId; }
     public String getTitle() { return title; }
@@ -44,7 +52,19 @@ public class Book implements Serializable {
     public String getDescription() { return description; }
     public String getGenre() { return genre; }
     public int getPublicationYear() { return publicationYear; }
+    public int getPages() { return pages; }
 
+    // Setters
+    public void setBookId(int bookId) { this.bookId = bookId; }
+    public void setTitle(String title) { this.title = title; }
+    public void setAuthor(String author) { this.author = author; }
+    public void setCoverImagePath(String coverImagePath) { this.coverImagePath = coverImagePath; }
+    public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
+    public void setRatingCount(int ratingCount) { this.ratingCount = ratingCount; }
+    public void setDescription(String description) { this.description = description; }
+    public void setGenre(String genre) { this.genre = genre; }
+    public void setPublicationYear(int publicationYear) { this.publicationYear = publicationYear; }
+    public void setPages(int pages) { this.pages = pages; }
 
     @Override
     public String toString() {
@@ -54,6 +74,7 @@ public class Book implements Serializable {
                 ", author='" + author + '\'' +
                 ", averageRating=" + averageRating +
                 ", ratingCount=" + ratingCount +
+                ", pages=" + pages +
                 '}';
     }
 }
