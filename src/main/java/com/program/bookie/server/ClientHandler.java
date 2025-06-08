@@ -116,6 +116,8 @@ public class ClientHandler implements Runnable {
                 return handleMarkNotificationsRead(request);
             case CLEAR_NOTIFICATIONS:
                 return handleClearNotifications(request);
+            case GET_BOOK_BY_ID:
+                return handleGetBookById(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -550,9 +552,27 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    // Helper method
+    private Response handleGetBookById(Request request) {
+        try {
+            Integer bookId = (Integer) request.getData();
+
+            if (bookId == null) {
+                return new Response(ResponseType.ERROR, "Book ID is required");
+            }
+
+            Book book = dbManager.getBookById(bookId);
+            return new Response(ResponseType.SUCCESS, book);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetBookById: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetBookById: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
     private int getUserIdFromUsername(String username) throws SQLException {
-        // You'll need to implement this method in DatabaseConnection
         return dbManager.getUserIdByUsername(username);
     }
 

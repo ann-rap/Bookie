@@ -64,6 +64,9 @@ public abstract class BaseNotification implements INotification {
     @Override
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
+    public void setTitle(String title) { this.title = title; }
+    public void setMessage(String message) { this.message = message; }
+
     @Override
     public String getFormattedTime() {
         if (createdAt == null) return "Unknown time";

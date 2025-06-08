@@ -22,7 +22,7 @@ public class CommentReplyNotification extends BaseNotification {
         this.reviewId = reviewId;
     }
 
-    // ADDED: Constructor with bookId
+
     public CommentReplyNotification(int userId, String commenterName, String bookTitle, int reviewId, int bookId) {
         this(userId, commenterName, bookTitle, reviewId);
         this.bookId = bookId;
@@ -42,10 +42,9 @@ public class CommentReplyNotification extends BaseNotification {
     public void handleClick(Object controller) {
         // Otwórz szczegóły książki z konkretną recenzją
         if (controller instanceof com.program.bookie.app.controllers.MainController) {
-            //TODO: Implement navigation to specific book/review
-            // com.program.bookie.app.controllers.MainController mainController =
-            //         (com.program.bookie.app.controllers.MainController) controller;
-            // mainController.openBookFromReview(reviewId);
+            com.program.bookie.app.controllers.MainController mainController =
+            (com.program.bookie.app.controllers.MainController) controller;
+            mainController.openBookFromNotification(bookId);
         }
         System.out.println("🔗 Opening book review for: " + bookTitle + " (Review ID: " + reviewId + ", Book ID: " + bookId + ")");
     }

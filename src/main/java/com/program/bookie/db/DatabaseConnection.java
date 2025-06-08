@@ -811,6 +811,48 @@ public class DatabaseConnection {
     }
 
     /**
+            * Pobiera książkę po ID wraz ze wszystkimi danymi
+ */
+    public Book getBookById(int bookId) throws SQLException {
+        String sql = """
+    SELECT b.book_id, b.title, b.author, b.cover_image, 
+           COALESCE(AVG(r.rating), 0) as avg_rating,
+           COUNT(r.rating) as rating_count,
+           COUNT(CASE WHEN r.content IS NOT NULL AND TRIM(r.content) != '' THEN 1 END) as review_count,
+           b.description, b.genre, b.publication_year
+    FROM books b 
+    LEFT JOIN reviews r ON b.book_id = r.book_id 
+    WHERE b.book_id = ?
+    GROUP BY b.book_id, b.title, b.author, b.cover_image, 
+             b.description, b.genre, b.publication_year
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Book book = new Book(
+                            rs.getInt("book_id"),
+                            rs.getString("title"),
+                            rs.getString("author"),
+                            rs.getString("cover_image"),
+                            rs.getDouble("avg_rating"),
+                            rs.getInt("rating_count"),
+                            rs.getString("description"),
+                            rs.getString("genre"),
+                            rs.getInt("publication_year")
+                    );
+                    book.setReviewCount(rs.getInt("review_count"));
+                    return book;
+                } else {
+                    throw new SQLException("Book not found with ID: " + bookId);
+                }
+            }
+        }
+    }
+
+    /**
      * Pobiera wszystkie reviews dla danej książki wraz z datami
      */
     public List<Review> getBookReviews(int bookId) throws SQLException {
@@ -1113,40 +1155,68 @@ public class DatabaseConnection {
      * Tworzenie odpowiedniego typu powiadomienia - SIMPLIFIED VERSION
      */
     private INotification buildNotificationFromResultSet(ResultSet rs) throws SQLException {
+        System.out.println("=== BUILDING NOTIFICATION FROM RESULT SET ===");
+
         String type = rs.getString("notification_type");
+        System.out.println("📋 Notification type: " + type);
+
+        // Debug wszystkich pól z result set
+        System.out.println("🔍 Result Set data:");
+        System.out.println("   notification_id: " + rs.getInt("notification_id"));
+        System.out.println("   user_id: " + rs.getInt("user_id"));
+        System.out.println("   title: " + rs.getString("title"));
+        System.out.println("   message: " + rs.getString("message"));
+        System.out.println("   related_id: " + rs.getInt("related_id"));
+        System.out.println("   is_read: " + rs.getBoolean("is_read"));
+        System.out.println("   created_at: " + rs.getTimestamp("created_at"));
+
         INotification notification;
 
         switch (type) {
             case "COMMENT_REPLY":
+                System.out.println("🏗️ Creating CommentReplyNotification");
                 CommentReplyNotification commentNotif = new CommentReplyNotification();
-                // Extract data from title and message instead of separate fields
+
+                // Pobierz podstawowe dane z bazy danych
                 String title = rs.getString("title");
                 String message = rs.getString("message");
+                System.out.println("📝 Title from DB: " + title);
+                System.out.println("💬 Message from DB: " + message);
 
-                // Parse commenter name from message if needed
-                // Example message: "username replied to your review of \"BookTitle\""
-                if (message.contains(" replied to your review of")) {
+                // Ustaw title i message z bazy danych używając setterów
+                commentNotif.setTitle(title);
+                commentNotif.setMessage(message);
+
+                // Parse commenter name from message
+                if (message != null && message.contains(" replied to your review of")) {
                     String commenterName = message.substring(0, message.indexOf(" replied to"));
+                    System.out.println("👤 Parsed commenter name: " + commenterName);
                     commentNotif.setCommenterName(commenterName);
                 }
 
-                // Parse book title from message if needed
-                if (message.contains("\"") && message.lastIndexOf("\"") > message.indexOf("\"")) {
+                // Parse book title from message
+                if (message != null && message.contains("\"") && message.lastIndexOf("\"") > message.indexOf("\"")) {
                     int start = message.indexOf("\"") + 1;
                     int end = message.lastIndexOf("\"");
                     String bookTitle = message.substring(start, end);
+                    System.out.println("📚 Parsed book title: " + bookTitle);
                     commentNotif.setBookTitle(bookTitle);
                 }
 
-                commentNotif.setReviewId(rs.getInt("related_id"));
+                int reviewId = rs.getInt("related_id");
+                System.out.println("📄 Review ID: " + reviewId);
+                commentNotif.setReviewId(reviewId);
 
-                // Set book_id if available
+                // Set book_id if available from additional data
                 String bookIdValue = rs.getString("book_id_value");
+                System.out.println("🔗 Book ID value: " + bookIdValue);
                 if (bookIdValue != null) {
                     try {
-                        commentNotif.setBookId(Integer.parseInt(bookIdValue));
+                        int bookId = Integer.parseInt(bookIdValue);
+                        commentNotif.setBookId(bookId);
+                        System.out.println("✅ Set book ID: " + bookId);
                     } catch (NumberFormatException e) {
-                        // Ignore if not a valid number
+                        System.err.println("❌ Invalid book ID format: " + bookIdValue);
                     }
                 }
 
@@ -1154,34 +1224,50 @@ public class DatabaseConnection {
                 break;
 
             case "READING_REMINDER":
+                System.out.println("🏗️ Creating ReadingReminderNotification");
                 ReadingReminderNotification reminderNotif = new ReadingReminderNotification();
-                // Handle reading reminders as before
+
+                // Ustaw title i message z bazy danych używając setterów
+                reminderNotif.setTitle(rs.getString("title"));
+                reminderNotif.setMessage(rs.getString("message"));
+
                 String bookIdValueReminder = rs.getString("book_id_value");
                 if (bookIdValueReminder != null) {
                     try {
-                        reminderNotif.setBookId(Integer.parseInt(bookIdValueReminder));
+                        int bookIdReminder = Integer.parseInt(bookIdValueReminder);
+                        reminderNotif.setBookId(bookIdReminder);
                         reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.SPECIFIC_BOOK);
+                        System.out.println("✅ Set reminder for specific book ID: " + bookIdReminder);
                     } catch (NumberFormatException e) {
                         reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.GENERAL_READING);
+                        System.out.println("✅ Set general reading reminder");
                     }
                 } else {
                     reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.GENERAL_READING);
+                    System.out.println("✅ Set general reading reminder (no book_id)");
                 }
                 notification = reminderNotif;
                 break;
 
             default:
+                System.err.println("❌ Unknown notification type: " + type);
                 return null;
         }
 
+        // Ustaw podstawowe pola
         notification.setNotificationId(rs.getInt("notification_id"));
         notification.setUserId(rs.getInt("user_id"));
         notification.setRead(rs.getBoolean("is_read"));
         notification.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
 
+        System.out.println("✅ Successfully built notification:");
+        System.out.println("   Final title: " + notification.getTitle());
+        System.out.println("   Final message: " + notification.getMessage());
+        System.out.println("   Final icon: " + notification.getIcon());
+        System.out.println("   Final type: " + notification.getNotificationType());
+
         return notification;
     }
-
     /**
      * Oznaczenie powiadomienia jako przeczytanego
      */

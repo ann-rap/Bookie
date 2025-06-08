@@ -6,7 +6,9 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.scene.media.AudioClip;
 
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,6 +21,8 @@ public class NotificationService {
     //do GUI
     private final IntegerProperty unreadCount = new SimpleIntegerProperty(0);
     private final ObservableList<INotification> notifications = FXCollections.observableArrayList();
+    private AudioClip notificationSound;
+    private int lastKnownCount = 0;
 
     private ScheduledExecutorService scheduler;
     private String currentUsername;
@@ -26,6 +30,19 @@ public class NotificationService {
 
     private NotificationService() {
         this.client = Client.getInstance();
+        try {
+            URL soundUrl = getClass().getResource("/sounds/notif.mp3");
+            if (soundUrl != null) {
+                notificationSound = new AudioClip(soundUrl.toString());
+                notificationSound.setVolume(0.7);
+                System.out.println("Notification sound loaded");
+                notificationSound.play();
+            } else {
+                System.err.println("Sound file not found: /sounds/notif.mp3");
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading sound: " + e.getMessage());
+        }
     }
 
     public static synchronized NotificationService getInstance() {
@@ -82,9 +99,19 @@ public class NotificationService {
 
             if (countResponse.getType() == ResponseType.SUCCESS) {
                 int count = (Integer) countResponse.getData();
-                Platform.runLater(() -> unreadCount.set(count));
-            }
 
+                Platform.runLater(() -> {
+                    lastKnownCount = unreadCount.get();
+                    unreadCount.set(count);
+
+                    if (count > lastKnownCount  && notificationSound != null) {
+                        System.out.println("New notifications detected! Playing sound...");
+                        notificationSound.play();
+                    }
+
+                    lastKnownCount = count;
+                });
+            }
         } catch (Exception e) {
             System.err.println("Error checking notifications: " + e.getMessage());
         }

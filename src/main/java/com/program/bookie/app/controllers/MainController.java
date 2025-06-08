@@ -1202,38 +1202,70 @@ public class MainController implements Initializable {
         }
     }
     private void displayNotifications() {
-        if (notificationsList == null) return;
+        System.out.println("=== DISPLAYING NOTIFICATIONS ===");
 
+        if (notificationsList == null) {
+            System.err.println("❌ notificationsList is null!");
+            return;
+        }
+
+        System.out.println("🧹 Clearing notifications list...");
         notificationsList.getChildren().clear();
 
         ObservableList<INotification> notifications = notificationService.getNotifications();
+        System.out.println("📋 Got " + notifications.size() + " notifications from service");
 
         if (notifications.isEmpty()) {
+            System.out.println("📝 Creating empty label");
             Label emptyLabel = new Label("No notifications");
             emptyLabel.setStyle("-fx-padding: 20; -fx-text-fill: #888;");
             notificationsList.getChildren().add(emptyLabel);
+            System.out.println("✅ Added empty label to notificationsList");
         } else {
-            for (INotification notification : notifications) {
-                VBox notificationItem = createNotificationItem(notification);
-                notificationsList.getChildren().add(notificationItem);
+            for (int i = 0; i < notifications.size(); i++) {
+                INotification notification = notifications.get(i);
+                System.out.println("📨 Processing notification " + i + ":");
+                System.out.println("   Title: " + notification.getTitle());
+                System.out.println("   Message: " + notification.getMessage());
+                System.out.println("   Type: " + notification.getNotificationType());
+                System.out.println("   Icon: " + notification.getIcon());
+                System.out.println("   Read: " + notification.isRead());
+
+                try {
+                    VBox notificationItem = createNotificationItem(notification);
+                    notificationsList.getChildren().add(notificationItem);
+                    System.out.println("✅ Added notification item " + i + " to list");
+                } catch (Exception e) {
+                    System.err.println("❌ Error creating notification item " + i + ": " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
         }
+
+        System.out.println("📊 Final notificationsList children count: " + notificationsList.getChildren().size());
     }
 
+    // Zaktualizuj createNotificationItem z debugowaniem:
     private VBox createNotificationItem(INotification notification) {
+        System.out.println("🔨 Creating notification item for: " + notification.getTitle());
+
         VBox item = new VBox(5);
-        item.setStyle("-fx-padding: 10; -fx-background-color: " +
-                (notification.isRead() ? "#f9f9f9" : "#fff") +
+        String backgroundColor = notification.isRead() ? "#f9f9f9" : "#fff";
+        item.setStyle("-fx-padding: 10; -fx-background-color: " + backgroundColor +
                 "; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
 
         // Header with icon and time
         HBox header = new HBox(10);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        Label iconLabel = new Label(notification.getIcon());
+        String iconText = notification.getIcon();
+        System.out.println("🎨 Setting icon: " + iconText);
+        Label iconLabel = new Label(iconText);
         iconLabel.setStyle("-fx-font-size: 20;");
 
-        Label timeLabel = new Label(notification.getFormattedTime());
+        String timeText = notification.getFormattedTime();
+        System.out.println("⏰ Setting time: " + timeText);
+        Label timeLabel = new Label(timeText);
         timeLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 11;");
 
         Region spacer = new Region();
@@ -1242,30 +1274,72 @@ public class MainController implements Initializable {
         header.getChildren().addAll(iconLabel, spacer, timeLabel);
 
         // Title
-        Label titleLabel = new Label(notification.getTitle());
+        String titleText = notification.getTitle();
+        System.out.println("📝 Setting title: " + titleText);
+        Label titleLabel = new Label(titleText);
         titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13;");
 
         // Message
-        Label messageLabel = new Label(notification.getMessage());
+        String messageText = notification.getMessage();
+        System.out.println("💬 Setting message: " + messageText);
+        Label messageLabel = new Label(messageText);
         messageLabel.setWrapText(true);
         messageLabel.setStyle("-fx-font-size: 12; -fx-text-fill: #555;");
 
         item.getChildren().addAll(header, titleLabel, messageLabel);
+        System.out.println("✅ Created notification item with " + item.getChildren().size() + " children");
 
         // Click handler
         item.setOnMouseClicked(event -> {
+            System.out.println("🖱️ Notification clicked: " + notification.getTitle());
             notification.handleClick(this);
             hideNotificationMenu();
         });
 
         // Hover effect
-        item.setOnMouseEntered(e -> item.setStyle(item.getStyle() +
-                "; -fx-background-color: #f0f0f0; -fx-cursor: hand;"));
-        item.setOnMouseExited(e -> item.setStyle(item.getStyle().replace(
-                "; -fx-background-color: #f0f0f0; -fx-cursor: hand;", "")));
+        item.setOnMouseEntered(e -> {
+            item.setStyle(item.getStyle() + "; -fx-background-color: #f0f0f0; -fx-cursor: hand;");
+        });
+        item.setOnMouseExited(e -> {
+            item.setStyle(item.getStyle().replace("; -fx-background-color: #f0f0f0; -fx-cursor: hand;", ""));
+        });
 
         return item;
     }
+
+    public void openBookFromNotification(int bookId) {
+        System.out.println("🔗 Opening book from notification, book ID: " + bookId);
+
+        // Pobierz pełne dane książki z serwera
+        new Thread(() -> {
+            try {
+                Request request = new Request(RequestType.GET_BOOK_BY_ID, bookId);
+                Response response = client.sendRequest(request);
+
+                if (response.getType() == ResponseType.SUCCESS) {
+                    Book book = (Book) response.getData();
+
+                    // Przełącz na UI thread żeby pokazać szczegóły
+                    Platform.runLater(() -> {
+                        System.out.println("✅ Successfully loaded book: " + book.getTitle());
+                        showBookDetails(book);
+                    });
+
+                } else {
+                    System.err.println("❌ Error loading book: " + response.getData());
+                    Platform.runLater(() -> {
+                        // Możesz pokazać alert z błędem
+                        System.err.println("Failed to load book details");
+                    });
+                }
+
+            } catch (Exception e) {
+                System.err.println("💥 Exception loading book: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
 
     private void markVisibleNotificationsAsRead() {
         ObservableList<INotification> notifications = notificationService.getNotifications();
