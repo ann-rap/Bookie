@@ -108,6 +108,16 @@ public class ClientHandler implements Runnable {
                 return handleGetReviewComments(request);
             case ADD_COMMENT:
                 return handleAddComment(request);
+            case GET_NOTIFICATION_COUNT:
+                return handleGetNotificationCount(request);
+            case GET_NOTIFICATIONS:
+                return handleGetNotifications(request);
+            case MARK_NOTIFICATIONS_READ:
+                return handleMarkNotificationsRead(request);
+            case CLEAR_NOTIFICATIONS:
+                return handleClearNotifications(request);
+            case GET_BOOK_BY_ID:
+                return handleGetBookById(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -411,8 +421,8 @@ public class ClientHandler implements Runnable {
                 return new Response(ResponseType.ERROR, "Review not found");
             }
 
-            dbManager.addComment(comment.getUsername(), comment.getReviewId(), comment.getContent());
-            return new Response(ResponseType.SUCCESS, "Comment added successfully");
+            dbManager.addCommentWithNotification(comment.getUsername(), comment.getReviewId(), comment.getContent());
+            return new Response(ResponseType.SUCCESS, "Comment added with notification");
 
         } catch (SQLException e) {
             System.err.println("Database error in handleAddComment: " + e.getMessage());
@@ -456,6 +466,114 @@ public class ClientHandler implements Runnable {
             System.err.println("Unexpected error in handleGetImage: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Unexpected error: " + e.getMessage());
         }
+    }
+
+    private Response handleGetNotificationCount(Request request) {
+        try {
+            String username = (String) request.getData();
+
+            if (username == null || username.trim().isEmpty()) {
+                return new Response(ResponseType.ERROR, "Username is required");
+            }
+
+            // Get user ID from username
+            int userId = getUserIdFromUsername(username);
+            int count = dbManager.getUnreadNotificationCount(userId);
+
+            return new Response(ResponseType.SUCCESS, count);
+
+        } catch (Exception e) {
+            System.err.println("Error getting notification count: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetNotifications(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Boolean unreadOnly = (Boolean) data.get("unreadOnly");
+
+            if (username == null || username.trim().isEmpty()) {
+                return new Response(ResponseType.ERROR, "Username is required");
+            }
+
+            int userId = getUserIdFromUsername(username);
+            List<INotification> notifications = dbManager.getUserNotifications(userId,
+                    unreadOnly != null ? unreadOnly : false);
+
+            return new Response(ResponseType.SUCCESS, notifications);
+
+        } catch (Exception e) {
+            System.err.println("Error getting notifications: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error: " + e.getMessage());
+        }
+    }
+
+    private Response handleMarkNotificationsRead(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            List<Integer> notificationIds = (List<Integer>) data.get("notificationIds");
+
+            if (username == null || notificationIds == null) {
+                return new Response(ResponseType.ERROR, "Username and notification IDs required");
+            }
+
+            int userId = getUserIdFromUsername(username);
+            dbManager.markNotificationsAsRead(userId, notificationIds);
+
+            return new Response(ResponseType.SUCCESS, "Notifications marked as read");
+
+        } catch (Exception e) {
+            System.err.println("Error marking notifications read: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error: " + e.getMessage());
+        }
+    }
+
+    private Response handleClearNotifications(Request request) {
+        try {
+            String username = (String) request.getData();
+
+            if (username == null || username.trim().isEmpty()) {
+                return new Response(ResponseType.ERROR, "Username is required");
+            }
+
+            int userId = getUserIdFromUsername(username);
+            dbManager.clearUserNotifications(userId);
+
+            return new Response(ResponseType.SUCCESS, "Notifications cleared");
+
+        } catch (Exception e) {
+            System.err.println("Error clearing notifications: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetBookById(Request request) {
+        try {
+            Integer bookId = (Integer) request.getData();
+
+            if (bookId == null) {
+                return new Response(ResponseType.ERROR, "Book ID is required");
+            }
+
+            Book book = dbManager.getBookById(bookId);
+            return new Response(ResponseType.SUCCESS, book);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetBookById: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetBookById: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private int getUserIdFromUsername(String username) throws SQLException {
+        return dbManager.getUserIdByUsername(username);
     }
 
 }
