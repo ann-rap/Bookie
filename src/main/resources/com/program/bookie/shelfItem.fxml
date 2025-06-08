@@ -9,27 +9,27 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox fx:id="mainContainer" alignment="CENTER" prefHeight="430.0" prefWidth="200.0" spacing="8"
-      style="-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2); -fx-min-height: 430; -fx-max-height: 430;"
+<VBox fx:id="mainContainer" alignment="CENTER" prefHeight="360.0" prefWidth="200.0" spacing="8"
+      style="-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2); -fx-min-height: 360; -fx-max-height: 360;"
       xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.program.bookie.app.controllers.ShelfItemController">
     <children>
-        <ImageView fx:id="bookCover" fitHeight="200.0" fitWidth="140.0" pickOnBounds="true" preserveRatio="true"
+        <ImageView fx:id="bookCover" fitHeight="180.0" fitWidth="120.0" pickOnBounds="true" preserveRatio="true"
                    style="-fx-background-color: #e9e9e9; -fx-border-color: #ccc; -fx-border-radius: 5; -fx-background-radius: 5;" />
 
         <Label fx:id="titleLabel" alignment="CENTER" maxWidth="180.0" text="Book Title" textAlignment="CENTER" wrapText="true">
             <font>
-                <Font name="System Bold" size="18.0" />
+                <Font name="System Bold" size="16.0" />
             </font>
         </Label>
 
         <Label fx:id="authorLabel" alignment="CENTER" maxWidth="180.0" text="by Author" textAlignment="CENTER" wrapText="true">
             <font>
-                <Font size="15.0" />
+                <Font size="13.0" />
             </font>
         </Label>
 
-        <VBox alignment="CENTER" spacing="5" prefHeight="80.0">
+        <VBox alignment="CENTER" spacing="5" prefHeight="70.0">
             <children>
                 <ProgressBar fx:id="readingProgress" prefWidth="180.0" prefHeight="18.0" progress="0.0" visible="true" />
                 <Label fx:id="progressLabel" text="0%" visible="true">

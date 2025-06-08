@@ -49,11 +49,9 @@ public class DatabaseConnection {
 
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute(createTableSQL);
-                System.out.println("✅ Table book_reading_count created or already exists");
             }
 
         } catch (SQLException e) {
-            System.err.println("⚠️ Error creating book_reading_count table: " + e.getMessage());
         }
     }
 
@@ -836,19 +834,15 @@ public class DatabaseConnection {
 
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute(createTableSQL);
-                System.out.println("✅ Table book_progress created or already exists");
             }
 
             // Dodaj kolumnę pages do books jeśli nie istnieje
             String alterTableSQL = "ALTER TABLE books ADD COLUMN IF NOT EXISTS pages INT DEFAULT 300";
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute(alterTableSQL);
-                System.out.println("✅ Column pages added to books table or already exists");
             }
 
         } catch (SQLException e) {
-            System.err.println("⚠️ Error creating book_progress table: " + e.getMessage());
-            // Nie rzucaj wyjątku - aplikacja może działać bez tej tabeli
         }
     }
 
@@ -1158,7 +1152,6 @@ public class DatabaseConnection {
             throw new IllegalArgumentException("Invalid page numbers");
         }
 
-        // Sprawdź czy postęp już istnieje
         String sqlCheck = """
         SELECT bp.progress_id FROM book_progress bp
         INNER JOIN user_account ua ON bp.user_id = ua.account_id
@@ -1185,7 +1178,6 @@ public class DatabaseConnection {
 
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next()) {
-                    // Postęp istnieje - aktualizuj
                     try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
                         updateStmt.setInt(1, currentPage);
                         updateStmt.setInt(2, totalPages);
@@ -1198,7 +1190,6 @@ public class DatabaseConnection {
                         }
                     }
                 } else {
-                    // Postęp nie istnieje - wstaw nowy
                     try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
                         insertStmt.setInt(1, bookId);
                         insertStmt.setInt(2, currentPage);
@@ -1225,7 +1216,6 @@ public class DatabaseConnection {
         String enumStatus = convertToEnumValue(newStatus);
         LocalDate currentDate = LocalDate.now();
 
-        // Sprawdź poprzedni status
         String previousStatus = getStatus(username, bookId);
 
         String sqlCheck = """
@@ -1254,7 +1244,6 @@ public class DatabaseConnection {
 
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next()) {
-                    // Rekord istnieje - aktualizuj
                     try (PreparedStatement updateStmt = connection.prepareStatement(sqlUpdate)) {
                         updateStmt.setString(1, enumStatus);
                         updateStmt.setDate(2, java.sql.Date.valueOf(currentDate));
@@ -1266,7 +1255,6 @@ public class DatabaseConnection {
                         }
                     }
                 } else {
-                    // Rekord nie istnieje - wstaw nowy
                     try (PreparedStatement insertStmt = connection.prepareStatement(sqlInsert)) {
                         insertStmt.setInt(1, bookId);
                         insertStmt.setString(2, enumStatus);
@@ -1281,7 +1269,6 @@ public class DatabaseConnection {
             }
         }
 
-        // Jeśli książka została oznaczona jako "Read", zaktualizuj licznik przeczytań
         if ("Read".equals(newStatus)) {
             updateReadingCount(username, bookId);
         }

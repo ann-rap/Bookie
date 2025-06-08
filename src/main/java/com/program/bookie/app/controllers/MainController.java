@@ -268,7 +268,7 @@ public class MainController implements Initializable {
     }
 
 
-    private void hideUserMenu() {
+    void hideUserMenu() {
         if (isUserMenuVisible) {
             isUserMenuVisible = false;
             userDropdown.setVisible(false);
@@ -568,7 +568,7 @@ public class MainController implements Initializable {
         searchPane.setVisible(false);
         bookDetailsPane.setVisible(false);
         statisticsPane.setVisible(false);
-        shelvesPane.setVisible(false); // DODANE - naprawia problem z Home
+        shelvesPane.setVisible(false);
     }
 
     //BOOK DETAILS
@@ -1188,9 +1188,6 @@ public class MainController implements Initializable {
                                     FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/shelfItem.fxml"));
                                     VBox shelfItem = loader.load();
 
-                                    // Zwiększ wysokość elementu półki
-                                    shelfItem.setPrefHeight(340); // ZWIĘKSZONE z 320 do 340
-                                    shelfItem.setMaxHeight(340);
 
                                     ShelfItemController controller = loader.getController();
                                     controller.setData(book, currentUser.getUsername(), status, this);
@@ -1217,90 +1214,6 @@ public class MainController implements Initializable {
                 System.err.println("Error loading shelf items: " + e.getMessage());
             }
         }).start();
-    }
-
-    private VBox createShelfBookCard(Book book) {
-        VBox bookCard = new VBox();
-        bookCard.setAlignment(Pos.CENTER);
-        bookCard.setSpacing(8);
-        bookCard.setPadding(new Insets(12));
-        bookCard.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 4, 0, 0, 2);");
-        bookCard.setPrefWidth(160);
-        bookCard.setPrefHeight(340);
-
-        ImageView coverImageView = new ImageView();
-        coverImageView.setFitWidth(130);
-        coverImageView.setFitHeight(170);
-        coverImageView.setPreserveRatio(true);
-        loadBookCoverForShelf(book, coverImageView);
-
-        VBox progressContainer = new VBox();
-        progressContainer.setAlignment(Pos.CENTER);
-        progressContainer.setSpacing(4);
-        progressContainer.setPrefWidth(130);
-
-        Pane progressBackground = new Pane();
-        progressBackground.setPrefWidth(120);
-        progressBackground.setPrefHeight(12);
-        progressBackground.setStyle("-fx-background-color: white; -fx-background-radius: 6; -fx-border-color: #658C4C; -fx-border-width: 2; -fx-border-radius: 6;");
-
-        Pane progressFill = new Pane();
-        progressFill.setPrefHeight(8);
-        progressFill.setStyle("-fx-background-color: #658C4C; -fx-background-radius: 4;");
-        progressFill.setPrefWidth(0);
-
-        StackPane progressStack = new StackPane();
-        progressStack.setPrefWidth(120);
-        progressStack.setPrefHeight(12);
-        progressStack.getChildren().addAll(progressBackground, progressFill);
-        progressStack.setAlignment(Pos.CENTER_LEFT);
-
-        Label progressLabel = new Label("0%");
-        progressLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
-        progressLabel.setStyle("-fx-text-fill: #658C4C; -fx-font-weight: bold;");
-
-        progressContainer.getChildren().addAll(progressStack, progressLabel);
-
-        Label titleLabel = new Label(book.getTitle());
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 11));
-        titleLabel.setWrapText(true);
-        titleLabel.setMaxWidth(140);
-        titleLabel.setAlignment(Pos.CENTER);
-        titleLabel.setStyle("-fx-text-alignment: center;");
-        titleLabel.setPrefHeight(30);
-
-        Label authorLabel = new Label("by " + book.getAuthor());
-        authorLabel.setFont(Font.font("System", FontWeight.NORMAL, 11)); // Zwiększony rozmiar
-        authorLabel.setStyle("-fx-text-fill: #666666;");
-        authorLabel.setWrapText(true);
-        authorLabel.setMaxWidth(140);
-        authorLabel.setAlignment(Pos.CENTER);
-        authorLabel.setPrefHeight(25);
-
-        bookCard.getChildren().addAll(coverImageView, progressContainer, titleLabel, authorLabel);
-
-        loadBookProgress(book, progressFill, progressLabel, progressBackground);
-
-        bookCard.setOnMouseEntered(e -> {
-            bookCard.setStyle("-fx-background-color: #f0f0f0; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 6, 0, 0, 3);");
-        });
-
-        bookCard.setOnMouseExited(e -> {
-            bookCard.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 4, 0, 0, 2);");
-        });
-
-        coverImageView.setOnMouseClicked(e -> {
-            System.out.println("Clicked on shelf book: " + book.getTitle());
-            showBookDetails(book);
-        });
-
-        progressStack.setOnMouseClicked(e -> {
-            openProgressEditDialog(book, progressFill, progressLabel, progressBackground);
-        });
-
-        progressStack.setStyle(progressStack.getStyle() + "; -fx-cursor: hand;");
-
-        return bookCard;
     }
 
     private void openProgressEditDialog(Book book, Pane progressFill, Label progressLabel, Pane progressBackground) {

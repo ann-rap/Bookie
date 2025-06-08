@@ -264,6 +264,10 @@ public class ShelfItemController implements Initializable {
     @FXML
     private void onEditProgressClicked() {
         try {
+            if (mainController != null) {
+                mainController.hideUserMenu();
+            }
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/progressEdit.fxml"));
             AnchorPane progressPane = loader.load();
 
