@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 public abstract class BaseNotification implements INotification {
     private static final long serialVersionUID = 1L;
 
+
     protected int notificationId;
     protected int userId;
     protected String title;

@@ -420,7 +420,7 @@ public class ClientHandler implements Runnable {
             }
 
             dbManager.addCommentWithNotification(comment.getUsername(), comment.getReviewId(), comment.getContent());
-            return new Response(ResponseType.SUCCESS, "Comment added successfully");
+            return new Response(ResponseType.SUCCESS, "Comment added with notification");
 
         } catch (SQLException e) {
             System.err.println("Database error in handleAddComment: " + e.getMessage());

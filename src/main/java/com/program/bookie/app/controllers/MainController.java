@@ -5,6 +5,7 @@ import com.program.bookie.client.NotificationService;
 import com.program.bookie.models.*;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.beans.binding.Bindings;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -106,7 +107,10 @@ public class MainController implements Initializable {
             welcomeLabel.setText("Welcome " + user.getUsername() + "!");
         }
         loadRandomQuote();
-        notificationService.start(user.getUsername());
+        if (notificationService != null) {
+            notificationService.start(user.getUsername());
+            System.out.println("Notification service started for: " + user.getUsername());
+        }
     }
 
     @Override
@@ -142,8 +146,15 @@ public class MainController implements Initializable {
         Platform.runLater(() -> {
             if (userButton.getScene() != null) {
                 userButton.getScene().setOnMouseClicked(event -> {
-                    if (!isClickOnUserMenu(event.getTarget()) && isUserMenuVisible) {
+                    boolean clickedOnUser = isClickOnUserMenu(event.getTarget());
+                    boolean clickedOnNotification = isClickOnNotificationMenu(event.getTarget());
+
+                    if (!clickedOnUser && isUserMenuVisible) {
                         hideUserMenu();
+                    }
+
+                    if (!clickedOnNotification && isNotificationMenuVisible) {
+                        hideNotificationMenu();
                     }
                 });
             }
@@ -172,14 +183,39 @@ public class MainController implements Initializable {
                     logoutButton.setStyle("-fx-background-color: transparent; -fx-alignment: center-left; -fx-padding: 10 16; -fx-text-fill: #615252; -fx-border-color: transparent;"));
         }
 
-        //powiadomienia
-        notificationService.unreadCountProperty().addListener((obs, oldCount, newCount) -> {
-            updateNotificationBadge(newCount.intValue());
-        });
+        if (notificationDropdown != null) {
+            notificationDropdown.setVisible(false);
+            notificationDropdown.setManaged(false);
+        }
+
+        // Hide notification badge initially
+        if (notificationBadge != null) {
+            notificationBadge.setVisible(false);
+        }
+
+
+        setupNotificationBindings();
 
 
 
     }
+    private boolean isClickOnNotificationMenu(Object target) {
+        if (target instanceof javafx.scene.Node) {
+            javafx.scene.Node node = (javafx.scene.Node) target;
+
+            // Check if clicked on bell button
+            if (node == bellButton || isChildOf(node, bellButton)) {
+                return true;
+            }
+
+            // Check if clicked in notification dropdown
+            if (node == notificationDropdown || isChildOf(node, notificationDropdown)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     //MENU
     public void closeButtonOnAction(ActionEvent actionEvent) {
@@ -209,7 +245,10 @@ public class MainController implements Initializable {
         isUserMenuVisible = !isUserMenuVisible;
         userDropdown.setVisible(isUserMenuVisible);
 
+
+
         if (isUserMenuVisible && currentUser != null) {
+            hideNotificationMenu();
             userGreeting.setText("Hi " + currentUser.getUsername() + "!");
         }
     }
@@ -1240,6 +1279,25 @@ public class MainController implements Initializable {
         isNotificationMenuVisible = false;
         if (notificationDropdown != null) {
             notificationDropdown.setVisible(false);
+        }
+    }
+
+    private void setupNotificationBindings() {
+        if (notificationService != null && notificationBadge != null && countNLabel != null) {
+            // Bind badge visibility to unread count
+            notificationBadge.visibleProperty().bind(
+                    Bindings.greaterThan(notificationService.unreadCountProperty(), 0)
+            );
+
+            // Bind label text to unread count
+            countNLabel.textProperty().bind(
+                    Bindings.createStringBinding(() -> {
+                        int count = notificationService.getUnreadCount();
+                        return count > 9 ? "9+" : String.valueOf(count);
+                    }, notificationService.unreadCountProperty())
+            );
+
+            System.out.println("Notification bindings established");
         }
     }
 

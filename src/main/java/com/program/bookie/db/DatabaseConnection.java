@@ -959,6 +959,14 @@ public class DatabaseConnection {
      * Adds a new notification to the database
      */
     public int addNotification(INotification notification, Map<String, String> additionalData) throws SQLException {
+        System.out.println("=== ADD NOTIFICATION TO DATABASE ===");
+        System.out.println("User ID: " + notification.getUserId());
+        System.out.println("Type: " + notification.getNotificationType());
+        System.out.println("Title: " + notification.getTitle());
+        System.out.println("Message: " + notification.getMessage());
+        System.out.println("Related ID: " + notification.getRelatedId());
+        System.out.println("Is Read: " + notification.isRead());
+
         String sql = """
         INSERT INTO notifications (user_id, notification_type, title, message, related_id, is_read)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -978,23 +986,41 @@ public class DatabaseConnection {
 
             stmt.setBoolean(6, notification.isRead());
 
+            // Wypisz gotowe zapytanie
+            System.out.println("SQL Query: " + stmt.toString());
+
+            System.out.println("Executing INSERT...");
             int rowsInserted = stmt.executeUpdate();
+            System.out.println("Rows inserted: " + rowsInserted);
+
             if (rowsInserted > 0) {
                 try (ResultSet rs = stmt.getGeneratedKeys()) {
                     if (rs.next()) {
                         int notificationId = rs.getInt(1);
+                        System.out.println("Generated notification ID: " + notificationId);
 
-                        // Store additional data if provided
+                        // NIE dodawaj do notification_data jeśli jej nie masz
                         if (additionalData != null && !additionalData.isEmpty()) {
-                            storeNotificationData(notificationId, additionalData);
+                            System.out.println("Additional data provided: " + additionalData);
+                            // Zakomentuj na razie
+                            // storeNotificationData(notificationId, additionalData);
                         }
 
                         return notificationId;
                     }
                 }
+            } else {
+                System.out.println("NO ROWS INSERTED!");
             }
+        } catch (SQLException e) {
+            System.err.println("SQL EXCEPTION: " + e.getMessage());
+            System.err.println("SQL State: " + e.getSQLState());
+            System.err.println("Error Code: " + e.getErrorCode());
+            e.printStackTrace();
+            throw e;
         }
-        throw new SQLException("Failed to insert notification");
+
+        throw new SQLException("Failed to insert notification - no rows affected");
     }
 
     //POWIADOMIENIA
@@ -1163,38 +1189,38 @@ public class DatabaseConnection {
      * Tworzenie powiadomienia przy dodaniu komentarza
      */
     public void addCommentWithNotification(String username, int reviewId, String content) throws SQLException {
-
+        //username = nazwa komentujacego
         addComment(username, reviewId, content);
-
+        System.out.println("Dodawanie komentarza");
 
         String sql = """
-        SELECT r.user_id, b.title, ua.username
+        SELECT r.user_id, b.title
         FROM reviews r
         INNER JOIN books b ON r.book_id = b.book_id
-        INNER JOIN user_account ua ON ua.username = ?
         WHERE r.review_id = ?
         """;
-
+        System.out.println("Proba wziecia info do notifi");
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            stmt.setInt(2, reviewId);
+            System.out.println("Wykonywanie selecta przy wstawianiu komentarza");
+            stmt.setInt(1, reviewId);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     int reviewOwnerId = rs.getInt("user_id");
                     String bookTitle = rs.getString("title");
-                    String commenterName = rs.getString("username");
 
-                    // Don't notify if commenting on own review
-                    if (!username.equals(commenterName)) {
+
+                    if (reviewOwnerId != getUserIdByUsername(username)) {
+                        System.out.println("To twoja review");
                         CommentReplyNotification notification = NotificationCreate.createCommentReply(
-                                reviewOwnerId, bookTitle, commenterName, reviewId
+                                reviewOwnerId, bookTitle, username, reviewId
                         );
 
                         Map<String, String> additionalData = new HashMap<>();
-                        additionalData.put("commenter_name", commenterName);
+                        additionalData.put("commenter_name", username);
                         additionalData.put("book_title", bookTitle);
 
+                        System.out.println("Dodawanie notificstion");
                         addNotification(notification, additionalData);
                     }
                 }

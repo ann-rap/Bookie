@@ -90,11 +90,9 @@
             <StackPane layoutX="866.0" layoutY="55.0" prefHeight="50.0" prefWidth="49.0">
                <children>
                   <!-- Bell Button -->
-                  <Button fx:id="bellButton" mnemonicParsing="false" onAction="#toggleNotificationMenu"
-                          prefHeight="59.0" prefWidth="61.0" style="-fx-background-color: transparent;">
+                  <Button fx:id="bellButton" mnemonicParsing="false" onAction="#toggleNotificationMenu" prefHeight="59.0" prefWidth="61.0" style="-fx-background-color: transparent;">
                      <graphic>
-                        <ImageView fx:id="bellImage" fitHeight="42.0" fitWidth="42.0"
-                                   pickOnBounds="true" preserveRatio="true">
+                        <ImageView fx:id="bellImage" fitHeight="42.0" fitWidth="42.0" pickOnBounds="true" preserveRatio="true">
                            <image>
                               <Image url="@../../../img/bell.png" />
                            </image>
@@ -103,13 +101,10 @@
                   </Button>
 
                   <!-- Notification Badge (overlay) -->
-                  <StackPane fx:id="notificationBadge" alignment="TOP_RIGHT"
-                             mouseTransparent="true" visible="false"
-                             maxHeight="20" maxWidth="20" translateX="15" translateY="-5">
+                  <StackPane fx:id="notificationBadge" alignment="TOP_RIGHT" maxHeight="20" maxWidth="20" mouseTransparent="true" translateX="-14.0" translateY="-5" visible="false">
                      <children>
                         <Circle fill="#c44e4e" radius="10.0" stroke="#c44e4e" strokeType="INSIDE" />
-                        <Label fx:id="countNLabel" alignment="CENTER"
-                               text="0" textFill="WHITE">
+                        <Label fx:id="notificationCountLabel" alignment="CENTER" contentDisplay="CENTER" prefHeight="24.0" prefWidth="20.0" text="0" textFill="WHITE">
                            <font>
                               <Font name="System Bold" size="11.0" />
                            </font>
