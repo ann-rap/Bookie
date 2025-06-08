@@ -62,14 +62,39 @@ public class ShelfItemController implements Initializable {
 
     private void setupClickableArea() {
         if (mainContainer != null) {
-            mainContainer.setStyle(mainContainer.getStyle() + "; -fx-cursor: hand;");
+            mainContainer.setPrefHeight(350.0);
+            mainContainer.setMaxHeight(350.0);
+            mainContainer.setMinHeight(350.0);
+
+            mainContainer.setStyle(
+                    "-fx-background-color: white;" +
+                            "-fx-padding: 10;" +
+                            "-fx-background-radius: 8;" +
+                            "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" +
+                            "-fx-cursor: hand;" +
+                            "-fx-border-width: 0;"
+            );
 
             mainContainer.setOnMouseEntered(e -> {
-                mainContainer.setStyle("-fx-background-color: #f0f0f0; -fx-padding: 10; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2); -fx-min-height: 360; -fx-max-height: 360; -fx-cursor: hand;");
+                mainContainer.setStyle(
+                        "-fx-background-color: #f8f9fa;" +
+                                "-fx-padding: 10;" +
+                                "-fx-background-radius: 8;" +
+                                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 8, 0, 0, 3);" +
+                                "-fx-cursor: hand;" +
+                                "-fx-border-width: 0;"
+                );
             });
 
             mainContainer.setOnMouseExited(e -> {
-                mainContainer.setStyle("-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2); -fx-min-height: 360; -fx-max-height: 360; -fx-cursor: hand;");
+                mainContainer.setStyle(
+                        "-fx-background-color: white;" +
+                                "-fx-padding: 10;" +
+                                "-fx-background-radius: 8;" +
+                                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" +
+                                "-fx-cursor: hand;" +
+                                "-fx-border-width: 0;"
+                );
             });
 
             mainContainer.setOnMouseClicked(e -> {
@@ -108,8 +133,9 @@ public class ShelfItemController implements Initializable {
             return;
         }
 
-        bookCover.setFitWidth(120);
-        bookCover.setFitHeight(160);
+        // Zmniejszone wymiary okładki
+        bookCover.setFitWidth(100);
+        bookCover.setFitHeight(140);
         bookCover.setPreserveRatio(true);
         bookCover.setSmooth(true);
 
@@ -139,8 +165,8 @@ public class ShelfItemController implements Initializable {
         if (bookCover == null || image == null) return;
         bookCover.setImage(image);
 
-        double fitWidth = 120;
-        double fitHeight = 160;
+        double fitWidth = 100;
+        double fitHeight = 140;
         double imageWidth = image.getWidth();
         double imageHeight = image.getHeight();
 
@@ -222,9 +248,9 @@ public class ShelfItemController implements Initializable {
                                 "-fx-background-color: white;" +
                                 "-fx-border-color: #cccccc;" +
                                 "-fx-border-width: 1px;" +
-                                "-fx-pref-height: 18px;" +
-                                "-fx-max-height: 18px;" +
-                                "-fx-min-height: 18px;"
+                                "-fx-pref-height: 16px;" +
+                                "-fx-max-height: 16px;" +
+                                "-fx-min-height: 16px;"
                 );
 
                 readingProgress.setVisible(true);
@@ -265,25 +291,26 @@ public class ShelfItemController implements Initializable {
             e.printStackTrace();
         }
     }
+
     private void adjustFontSizes() {
         String title = titleLabel.getText();
-        int fontSize = 18;
+        int fontSize = 16;
 
         if (title.length() > 30) {
-            fontSize = 14;
+            fontSize = 12;
         } else if (title.length() > 20) {
-            fontSize = 16;
+            fontSize = 14;
         }
 
         titleLabel.setStyle("-fx-font-size: " + fontSize + "px; -fx-font-weight: bold; -fx-text-fill: #333;");
 
         String author = authorLabel.getText();
-        int authorFontSize = 15;
+        int authorFontSize = 13;
 
         if (author.length() > 25) {
-            authorFontSize = 12;
+            authorFontSize = 10;
         } else if (author.length() > 20) {
-            authorFontSize = 13;
+            authorFontSize = 11;
         }
 
         authorLabel.setStyle("-fx-font-size: " + authorFontSize + "px; -fx-text-fill: #666;");

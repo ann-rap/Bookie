@@ -108,7 +108,7 @@
                <children>
                   <ScrollPane prefHeight="484.0" prefWidth="1000.0" style="-fx-background-color: transparent;" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED">
                      <content>
-                        <VBox prefHeight="1200.0" prefWidth="985.0" spacing="25" style="-fx-padding: 20;">
+                        <VBox prefHeight="1500.0" prefWidth="985.0" spacing="25" style="-fx-padding: 20;">
 
                            <VBox spacing="10">
                               <HBox alignment="CENTER_LEFT" spacing="10">
@@ -126,23 +126,23 @@
 
                               <HBox alignment="CENTER_LEFT" spacing="5">
                                  <Button fx:id="currentlyReadingLeftButton" mnemonicParsing="false" onAction="#scrollCurrentlyReadingLeft"
-                                         prefHeight="370.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
+                                         prefHeight="380.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
                                     <graphic>
                                        <Label text="‹" style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;" />
                                     </graphic>
                                  </Button>
 
-                                 <ScrollPane fx:id="currentlyReadingScrollPane" prefHeight="370.0" prefWidth="910.0"
+                                 <ScrollPane fx:id="currentlyReadingScrollPane" prefHeight="380.0" prefWidth="910.0"
                                              style="-fx-background-color: #f8f9fa; -fx-background-radius: 12; -fx-border-color: #839174; -fx-border-width: 2; -fx-border-radius: 12;"
                                              hbarPolicy="NEVER" vbarPolicy="NEVER" fitToHeight="true">
                                     <content>
-                                       <HBox fx:id="currentlyReadingContainer" minHeight="370.0" prefHeight="370.0" maxHeight="370.0"
-                                             spacing="15" style="-fx-padding: 10;" alignment="CENTER_LEFT" />
+                                       <HBox fx:id="currentlyReadingContainer" minHeight="380.0" prefHeight="380.0" maxHeight="380.0"
+                                             spacing="15" style="-fx-padding: 10;" alignment="CENTER" />
                                     </content>
                                  </ScrollPane>
 
                                  <Button fx:id="currentlyReadingRightButton" mnemonicParsing="false" onAction="#scrollCurrentlyReadingRight"
-                                         prefHeight="370.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
+                                         prefHeight="380.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
                                     <graphic>
                                        <Label text="›" style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;" />
                                     </graphic>
@@ -166,23 +166,23 @@
 
                               <HBox alignment="CENTER_LEFT" spacing="5">
                                  <Button fx:id="wantToReadLeftButton" mnemonicParsing="false" onAction="#scrollWantToReadLeft"
-                                         prefHeight="370.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
+                                         prefHeight="380.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
                                     <graphic>
                                        <Label text="‹" style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;" />
                                     </graphic>
                                  </Button>
 
-                                 <ScrollPane fx:id="wantToReadScrollPane" prefHeight="370.0" prefWidth="910.0"
+                                 <ScrollPane fx:id="wantToReadScrollPane" prefHeight="380.0" prefWidth="910.0"
                                              style="-fx-background-color: #f8f9fa; -fx-background-radius: 12; -fx-border-color: #839174; -fx-border-width: 2; -fx-border-radius: 12;"
                                              hbarPolicy="NEVER" vbarPolicy="NEVER" fitToHeight="true">
                                     <content>
-                                       <HBox fx:id="wantToReadContainer" minHeight="370.0" prefHeight="370.0" maxHeight="370.0"
-                                             spacing="15" style="-fx-padding: 10;" alignment="CENTER_LEFT" />
+                                       <HBox fx:id="wantToReadContainer" minHeight="380.0" prefHeight="380.0" maxHeight="380.0"
+                                             spacing="15" style="-fx-padding: 10;" alignment="CENTER" />
                                     </content>
                                  </ScrollPane>
 
                                  <Button fx:id="wantToReadRightButton" mnemonicParsing="false" onAction="#scrollWantToReadRight"
-                                         prefHeight="370.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
+                                         prefHeight="380.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
                                     <graphic>
                                        <Label text="›" style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;" />
                                     </graphic>
@@ -206,23 +206,23 @@
 
                               <HBox alignment="CENTER_LEFT" spacing="5">
                                  <Button fx:id="readLeftButton" mnemonicParsing="false" onAction="#scrollReadLeft"
-                                         prefHeight="370.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
+                                         prefHeight="380.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
                                     <graphic>
                                        <Label text="‹" style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;" />
                                     </graphic>
                                  </Button>
 
-                                 <ScrollPane fx:id="readScrollPane" prefHeight="370.0" prefWidth="910.0"
+                                 <ScrollPane fx:id="readScrollPane" prefHeight="380.0" prefWidth="910.0"
                                              style="-fx-background-color: #f8f9fa; -fx-background-radius: 12; -fx-border-color: #839174; -fx-border-width: 2; -fx-border-radius: 12;"
                                              hbarPolicy="NEVER" vbarPolicy="NEVER" fitToHeight="true">
                                     <content>
-                                       <HBox fx:id="readContainer" minHeight="370.0" prefHeight="370.0" maxHeight="370.0"
-                                             spacing="15" style="-fx-padding: 10;" alignment="CENTER_LEFT" />
+                                       <HBox fx:id="readContainer" minHeight="380.0" prefHeight="380.0" maxHeight="380.0"
+                                             spacing="15" style="-fx-padding: 10;" alignment="CENTER" />
                                     </content>
                                  </ScrollPane>
 
                                  <Button fx:id="readRightButton" mnemonicParsing="false" onAction="#scrollReadRight"
-                                         prefHeight="370.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
+                                         prefHeight="380.0" prefWidth="30.0" style="-fx-background-color: #839174; -fx-background-radius: 8;" visible="false">
                                     <graphic>
                                        <Label text="›" style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;" />
                                     </graphic>
