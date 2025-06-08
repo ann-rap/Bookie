@@ -6,6 +6,7 @@ public class CommentReplyNotification extends BaseNotification {
     private String commenterName;
     private String bookTitle;
     private int reviewId;
+    private int bookId; // ADDED: Book ID for navigation
 
     public CommentReplyNotification() {
         super();
@@ -19,6 +20,12 @@ public class CommentReplyNotification extends BaseNotification {
         this.commenterName = commenterName;
         this.bookTitle = bookTitle;
         this.reviewId = reviewId;
+    }
+
+    // ADDED: Constructor with bookId
+    public CommentReplyNotification(int userId, String commenterName, String bookTitle, int reviewId, int bookId) {
+        this(userId, commenterName, bookTitle, reviewId);
+        this.bookId = bookId;
     }
 
     @Override
@@ -35,12 +42,12 @@ public class CommentReplyNotification extends BaseNotification {
     public void handleClick(Object controller) {
         // Otwórz szczegóły książki z konkretną recenzją
         if (controller instanceof com.program.bookie.app.controllers.MainController) {
-            //TODO:
-           // com.program.bookie.app.controllers.MainController mainController =
-          //          (com.program.bookie.app.controllers.MainController) controller;
-         //   mainController.openBookFromReview(reviewId);
+            //TODO: Implement navigation to specific book/review
+            // com.program.bookie.app.controllers.MainController mainController =
+            //         (com.program.bookie.app.controllers.MainController) controller;
+            // mainController.openBookFromReview(reviewId);
         }
-        System.out.println("🔗 Opening book review for: " + bookTitle + " (Review ID: " + reviewId + ")");
+        System.out.println("🔗 Opening book review for: " + bookTitle + " (Review ID: " + reviewId + ", Book ID: " + bookId + ")");
     }
 
     // Gettery dla dodatkowych pól
@@ -52,4 +59,8 @@ public class CommentReplyNotification extends BaseNotification {
 
     public int getReviewId() { return reviewId; }
     public void setReviewId(int reviewId) { this.reviewId = reviewId; }
+
+    // ADDED: Getter and setter for bookId
+    public int getBookId() { return bookId; }
+    public void setBookId(int bookId) { this.bookId = bookId; }
 }

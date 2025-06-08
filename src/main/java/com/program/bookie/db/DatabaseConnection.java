@@ -1079,16 +1079,12 @@ public class DatabaseConnection {
      */
     public List<INotification> getUserNotifications(int userId, boolean unreadOnly) throws SQLException {
         String sql = """
-        SELECT n.*, 
-               nd1.data_value as commenter_name,
-               nd2.data_value as book_title,
-               nd3.data_value as book_id
-        FROM notifications n
-        LEFT JOIN notification_data nd1 ON n.notification_id = nd1.notification_id AND nd1.data_key = 'commenter_name'
-        LEFT JOIN notification_data nd2 ON n.notification_id = nd2.notification_id AND nd2.data_key = 'book_title'
-        LEFT JOIN notification_data nd3 ON n.notification_id = nd3.notification_id AND nd3.data_key = 'book_id'
-        WHERE n.user_id = ?
-        """;
+    SELECT n.*, 
+           nd1.data_value as book_id_value
+    FROM notifications n
+    LEFT JOIN notification_data nd1 ON n.notification_id = nd1.notification_id AND nd1.data_key = 'book_id'
+    WHERE n.user_id = ?
+    """;
 
         if (unreadOnly) {
             sql += " AND n.is_read = FALSE";
@@ -1114,7 +1110,7 @@ public class DatabaseConnection {
     }
 
     /**
-     * Tworzenie odpowiedneigo typu powiadomienia
+     * Tworzenie odpowiedniego typu powiadomienia - SIMPLIFIED VERSION
      */
     private INotification buildNotificationFromResultSet(ResultSet rs) throws SQLException {
         String type = rs.getString("notification_type");
@@ -1123,19 +1119,51 @@ public class DatabaseConnection {
         switch (type) {
             case "COMMENT_REPLY":
                 CommentReplyNotification commentNotif = new CommentReplyNotification();
-                commentNotif.setCommenterName(rs.getString("commenter_name"));
-                commentNotif.setBookTitle(rs.getString("book_title"));
+                // Extract data from title and message instead of separate fields
+                String title = rs.getString("title");
+                String message = rs.getString("message");
+
+                // Parse commenter name from message if needed
+                // Example message: "username replied to your review of \"BookTitle\""
+                if (message.contains(" replied to your review of")) {
+                    String commenterName = message.substring(0, message.indexOf(" replied to"));
+                    commentNotif.setCommenterName(commenterName);
+                }
+
+                // Parse book title from message if needed
+                if (message.contains("\"") && message.lastIndexOf("\"") > message.indexOf("\"")) {
+                    int start = message.indexOf("\"") + 1;
+                    int end = message.lastIndexOf("\"");
+                    String bookTitle = message.substring(start, end);
+                    commentNotif.setBookTitle(bookTitle);
+                }
+
                 commentNotif.setReviewId(rs.getInt("related_id"));
+
+                // Set book_id if available
+                String bookIdValue = rs.getString("book_id_value");
+                if (bookIdValue != null) {
+                    try {
+                        commentNotif.setBookId(Integer.parseInt(bookIdValue));
+                    } catch (NumberFormatException e) {
+                        // Ignore if not a valid number
+                    }
+                }
+
                 notification = commentNotif;
                 break;
 
             case "READING_REMINDER":
                 ReadingReminderNotification reminderNotif = new ReadingReminderNotification();
-                String bookTitle = rs.getString("book_title");
-                if (bookTitle != null) {
-                    reminderNotif.setBookTitle(bookTitle);
-                    reminderNotif.setBookId(rs.getInt("book_id"));
-                    reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.SPECIFIC_BOOK);
+                // Handle reading reminders as before
+                String bookIdValueReminder = rs.getString("book_id_value");
+                if (bookIdValueReminder != null) {
+                    try {
+                        reminderNotif.setBookId(Integer.parseInt(bookIdValueReminder));
+                        reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.SPECIFIC_BOOK);
+                    } catch (NumberFormatException e) {
+                        reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.GENERAL_READING);
+                    }
                 } else {
                     reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.GENERAL_READING);
                 }
@@ -1194,11 +1222,11 @@ public class DatabaseConnection {
         System.out.println("Dodawanie komentarza");
 
         String sql = """
-        SELECT r.user_id, b.title
-        FROM reviews r
-        INNER JOIN books b ON r.book_id = b.book_id
-        WHERE r.review_id = ?
-        """;
+    SELECT r.user_id, b.title, b.book_id
+    FROM reviews r
+    INNER JOIN books b ON r.book_id = b.book_id
+    WHERE r.review_id = ?
+    """;
         System.out.println("Proba wziecia info do notifi");
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             System.out.println("Wykonywanie selecta przy wstawianiu komentarza");
@@ -1208,20 +1236,23 @@ public class DatabaseConnection {
                 if (rs.next()) {
                     int reviewOwnerId = rs.getInt("user_id");
                     String bookTitle = rs.getString("title");
+                    int bookId = rs.getInt("book_id");
 
-
+                    // Sprawdź czy komentujący to nie autor recenzji
                     if (reviewOwnerId != getUserIdByUsername(username)) {
-                        System.out.println("To twoja review");
+                        System.out.println("Komentarz nie jest od autora recenzji - tworzenie notifikacji");
                         CommentReplyNotification notification = NotificationCreate.createCommentReply(
-                                reviewOwnerId, bookTitle, username, reviewId
+                                reviewOwnerId, bookTitle, username, reviewId, bookId
                         );
 
+                        // FIXED: Only add book_id, remove duplicate data
                         Map<String, String> additionalData = new HashMap<>();
-                        additionalData.put("commenter_name", username);
-                        additionalData.put("book_title", bookTitle);
+                        additionalData.put("book_id", String.valueOf(bookId));
 
-                        System.out.println("Dodawanie notificstion");
+                        System.out.println("Dodawanie notification");
                         addNotification(notification, additionalData);
+                    } else {
+                        System.out.println("To jest komentarz autora do własnej recenzji - brak notifikacji");
                     }
                 }
             }
