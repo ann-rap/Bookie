@@ -6,6 +6,7 @@ import com.program.bookie.models.*;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.binding.Bindings;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -185,15 +186,22 @@ public class MainController implements Initializable {
 
         if (notificationDropdown != null) {
             notificationDropdown.setVisible(false);
-            notificationDropdown.setManaged(false);
+
         }
 
-        // Hide notification badge initially
-        if (notificationBadge != null) {
-            notificationBadge.setVisible(false);
+        if (notificationService != null) {
+            notificationService.getNotifications().addListener((ListChangeListener<INotification>) change -> {
+                while (change.next()) {
+                    if (change.wasAdded() || change.wasReplaced()) {
+                        // Lista się zmieniła - odśwież wyświetlanie jeśli menu jest otwarte
+                        if (isNotificationMenuVisible) {
+                            Platform.runLater(this::displayNotifications);
+                        }
+                    }
+                }
+            });
+
         }
-
-
         setupNotificationBindings();
 
 

@@ -999,11 +999,11 @@ public class DatabaseConnection {
                         int notificationId = rs.getInt(1);
                         System.out.println("Generated notification ID: " + notificationId);
 
-                        // NIE dodawaj do notification_data jeśli jej nie masz
+
                         if (additionalData != null && !additionalData.isEmpty()) {
                             System.out.println("Additional data provided: " + additionalData);
-                            // Zakomentuj na razie
-                            // storeNotificationData(notificationId, additionalData);
+
+                            storeNotificationData(notificationId, additionalData);
                         }
 
                         return notificationId;
