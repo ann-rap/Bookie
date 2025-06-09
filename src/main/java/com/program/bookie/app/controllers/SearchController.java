@@ -59,20 +59,54 @@ public class SearchController {
     private MainController mainController; // Controller glownego panelu (przesylanie informacji o kliknieciu)
 
     public void setData(Book book, String username) {
+        setBasicData(book, username);
+        loadAdditionalDataAsync();
+    }
+
+    public void loadAdditionalDataAsync() {
+        // Załaduj okładkę
+        loadBookCoverAsync(currentBook);
+
+        // Załaduj rating użytkownika
+        loadUserRatingAsync();
+
+        // Załaduj status czytania
+        loadReadingStatusAsync();
+    }
+
+
+    public void setBasicData(Book book, String username) {
         this.currentUsername = username;
         this.currentBookId = book.getBookId();
         this.currentBook = book;
 
+        // Ustaw tylko podstawowe informacje tekstowe (bez komunikacji z serwerem)
         titleLabel.setText(book.getTitle());
         authorLabel.setText("by " + book.getAuthor());
         avgRatingLabel.setText(String.format("★%.1f", book.getAverageRating()) + " avg rating");
         ratingCountLabel.setText(book.getRatingCount() + " ratings");
         publicationYearLabel.setText("published in " + book.getPublicationYear());
 
-        setupBookCoverOptimized(book);
+        // Ustaw placeholder dla okładki
+        bookCover.setFitWidth(150);
+        bookCover.setFitHeight(200);
+        bookCover.setPreserveRatio(true);
+        bookCover.setSmooth(true);
+        bookCover.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #ddd; -fx-border-width: 1;");
+
+        // Ustaw placeholder dla gwiazdek (puste)
+        ImageView[] stars = {star1, star2, star3, star4, star5};
+        for (ImageView star : stars) {
+            if (star != null) {
+                setStarImage(star, false); // Wszystkie puste na start
+            }
+        }
+
+        // Ustaw placeholder dla ComboBox
         initializeComboBox();
-        loadUserRating();
-        loadReadingStatus();
+        statusComboBox.getSelectionModel().select(WANT_TO_READ);
+        statusComboBox.setDisable(true); // Zablokuj na czas ładowania
+
         setupClickablePanel();
     }
 
@@ -127,49 +161,50 @@ public class SearchController {
     /**
      * Nowa, zoptymalizowana metoda ładowania okładki z cache
      */
-    private void setupBookCoverOptimized(Book book) {
-        if (bookCover == null) return;
-
+    private void loadBookCoverAsync(Book book) {
         String imagePath = book.getCoverImagePath();
         if (imagePath == null || imagePath.isEmpty()) {
             setDefaultCover();
             return;
         }
 
-        // Ustaw domyślny rozmiar
-        bookCover.setFitWidth(150);
-        bookCover.setFitHeight(200);
-        bookCover.setPreserveRatio(true);
-        bookCover.setSmooth(true);
-
-        // Spróbuj najpierw z cache klienta
+        // Sprawdź cache najpierw (synchronicznie - bardzo szybko)
         Image cachedImage = client.getImageFX(imagePath);
         if (cachedImage != null) {
             setImageWithViewport(cachedImage);
-            System.out.println("✅ Search cover loaded from cache: " + imagePath);
+            bookCover.setStyle(""); // Usuń placeholder
             return;
         }
 
-        // Załaduj w tle z serwera
-        new Thread(() -> {
-            try {
-                Image serverImage = client.getImageFX(imagePath);
+        // Załaduj z serwera asynchronicznie (tylko jeśli nie ma w cache)
+        Request imageRequest = new Request(RequestType.GET_IMAGE, imagePath);
 
-                Platform.runLater(() -> {
-                    if (serverImage != null) {
-                        setImageWithViewport(serverImage);
-                        System.out.println("✅ Search cover loaded from server: " + imagePath);
-                    } else {
-                        // Fallback do lokalnych zasobów
+        client.executeAsyncWithData(imageRequest, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                if (response.getType() == ResponseType.SUCCESS) {
+                    try {
+                        ImageData imageData = (ImageData) response.getData();
+                        if (imageData != null && imageData.getImageBytes() != null) {
+                            Image serverImage = new Image(new java.io.ByteArrayInputStream(imageData.getImageBytes()));
+                            setImageWithViewport(serverImage);
+                            bookCover.setStyle(""); // Usuń placeholder
+                        } else {
+                            loadLocalCover(imagePath);
+                        }
+                    } catch (Exception e) {
                         loadLocalCover(imagePath);
                     }
-                });
+                } else {
+                    loadLocalCover(imagePath);
+                }
+            }
 
-            } catch (Exception e) {
-                System.err.println("Error loading cover from server: " + e.getMessage());
+            @Override
+            public void handleError(Exception e) {
                 Platform.runLater(() -> loadLocalCover(imagePath));
             }
-        }).start();
+        });
     }
 
     /**
@@ -249,27 +284,33 @@ public class SearchController {
         });
     }
 
-    private void loadUserRating() {
-        try {
-            Map<String, Object> data = new HashMap<>();
-            data.put("username", currentUsername);
-            data.put("bookId", currentBookId);
+    private void loadUserRatingAsync() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("username", currentUsername);
+        data.put("bookId", currentBookId);
 
-            Request request = new Request(RequestType.GET_USER_RATING, data);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.GET_USER_RATING, data);
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                Integer rating = (Integer) response.getData();
-                displayUserRating(rating != null ? rating : 0);
-            } else {
-                displayUserRating(0);
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                if (response.getType() == ResponseType.SUCCESS) {
+                    Integer rating = (Integer) response.getData();
+                    displayUserRating(rating != null ? rating : 0);
+                } else {
+                    displayUserRating(0);
+                    System.err.println("Error loading user rating: " + response.getData());
+                }
             }
 
-        } catch (Exception e) {
-            System.err.println("Exception loading user rating: " + e.getMessage());
-            displayUserRating(0);
-        }
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Exception loading user rating: " + e.getMessage());
+                Platform.runLater(() -> displayUserRating(0));
+            }
+        });
     }
+
 
     // Funkcja do wyświetlania gwiazdek na podstawie oceny
     private void displayUserRating(int rating) {
@@ -293,41 +334,54 @@ public class SearchController {
         }
     }
 
-    private void loadReadingStatus() {
-        try {
+
+    private void loadReadingStatusAsync() {
             Map<String, Object> data = new HashMap<>();
             data.put("username", currentUsername);
             data.put("bookId", currentBookId);
 
             Request request = new Request(RequestType.GET_READING_STATUS, data);
-            Response response = client.sendRequest(request);
 
-            isUpdating = true;
+            client.executeAsyncWithData(request, new Client.ResponseHandler() {
+                @Override
+                public void handle(Response response) {
+                    isUpdating = true;
+                    try {
+                        if (response.getType() == ResponseType.SUCCESS) {
+                            String status = (String) response.getData();
+                            if (status == null || status.trim().isEmpty()) {
+                                statusComboBox.getSelectionModel().select(WANT_TO_READ);
+                                setComboBoxStyle(true);
+                            } else {
+                                statusComboBox.getSelectionModel().select(status);
+                                setComboBoxStyle(false);
+                            }
+                        } else {
+                            statusComboBox.getSelectionModel().select(WANT_TO_READ);
+                            setComboBoxStyle(true);
+                        }
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                String status = (String) response.getData();
-                if (status == null || status.trim().isEmpty()) {
-                    statusComboBox.getSelectionModel().select(WANT_TO_READ);
-                    setComboBoxStyle(true);
-                } else {
-                    statusComboBox.getSelectionModel().select(status);
-                    setComboBoxStyle(false);
+                        // WAŻNE: Odblokuj ComboBox po załadowaniu
+                        statusComboBox.setDisable(false);
+
+                    } finally {
+                        isUpdating = false;
+                    }
                 }
-            } else {
-                System.err.println("Error loading reading status: " + response.getData());
-                statusComboBox.getSelectionModel().select(WANT_TO_READ);
-                setComboBoxStyle(true);
-            }
 
-        } catch (Exception e) {
-            System.err.println("Exception loading reading status: " + e.getMessage());
-            e.printStackTrace();
-            statusComboBox.getSelectionModel().select(WANT_TO_READ);
-            setComboBoxStyle(true);
-        } finally {
-            isUpdating = false;
+                @Override
+                public void handleError(Exception e) {
+                    Platform.runLater(() -> {
+                        isUpdating = true;
+                        statusComboBox.getSelectionModel().select(WANT_TO_READ);
+                        setComboBoxStyle(true);
+                        statusComboBox.setDisable(false); // Odblokuj nawet przy błędzie
+                        isUpdating = false;
+                    });
+                }
+            });
         }
-    }
+
 
     private void updateReadingStatus(String selectedStatus) {
         try {
@@ -412,7 +466,7 @@ public class SearchController {
 
             // Po zamknięciu okna review, odśwież dane
             reviewStage.setOnHidden(e -> {
-                loadUserRating();
+                loadUserRatingAsync();
             });
 
             reviewStage.show();
