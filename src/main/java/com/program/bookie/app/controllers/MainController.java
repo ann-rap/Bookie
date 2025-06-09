@@ -443,20 +443,26 @@ public class MainController implements Initializable {
 
     //HOMEPAGE
     public void loadTopRatedBooks() {
-        try {
-            Request request = new Request(RequestType.GET_TOP_BOOKS, 4);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.GET_TOP_BOOKS, 4);
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                @SuppressWarnings("unchecked")
-                List<Book> topBooks = (List<Book>) response.getData();
-                displayBooks(topBooks);
-            } else {
-                System.err.println("Błąd pobierania książek: " + response.getData());
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                if (response.getType() == ResponseType.SUCCESS) {
+                    @SuppressWarnings("unchecked")
+                    List<Book> topBooks = (List<Book>) response.getData();
+                    displayBooks(topBooks);
+                    System.out.println("Top books loaded successfully!");
+                } else {
+                    System.err.println("Błąd pobierania książek: " + response.getData());
+                }
             }
-        } catch (Exception e) {
-            System.err.println("Błąd połączenia: " + e.getMessage());
-        }
+
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Błąd połączenia: " + e.getMessage());
+            }
+        });
     }
 
     private void displayBooks(List<Book> books) {
@@ -578,25 +584,33 @@ public class MainController implements Initializable {
         String searchTerm = searchField.getText();
         if (searchTerm == null || searchTerm.isBlank()) return;
 
-        try {
-            Request request = new Request(RequestType.SEARCH_BOOK, searchTerm);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.SEARCH_BOOK, searchTerm);
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                List<Book> results = (List<Book>) response.getData();
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                if (response.getType() == ResponseType.SUCCESS) {
+                    @SuppressWarnings("unchecked")
+                    List<Book> results = (List<Book>) response.getData();
 
-                showSearchResults(results);
-                loadRandomQuote();
-                searchPane.setVisible(true);
-                homePane.setVisible(false);
-                bookDetailsPane.setVisible(false);
-                statisticsPane.setVisible(false);
-            } else {
-                System.err.println("Search failed: " + response.getData());
+                    showSearchResults(results);
+                    loadRandomQuote();
+                    searchPane.setVisible(true);
+                    homePane.setVisible(false);
+                    bookDetailsPane.setVisible(false);
+                    statisticsPane.setVisible(false);
+
+                    System.out.println("Search completed for: " + searchTerm);
+                } else {
+                    System.err.println("Search failed: " + response.getData());
+                }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Search error: " + e.getMessage());
+            }
+        });
     }
 
     public void onHomeClicked() {
