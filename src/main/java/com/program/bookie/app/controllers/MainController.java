@@ -443,20 +443,26 @@ public class MainController implements Initializable {
 
     //HOMEPAGE
     public void loadTopRatedBooks() {
-        try {
-            Request request = new Request(RequestType.GET_TOP_BOOKS, 4);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.GET_TOP_BOOKS, 4);
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                @SuppressWarnings("unchecked")
-                List<Book> topBooks = (List<Book>) response.getData();
-                displayBooks(topBooks);
-            } else {
-                System.err.println("Błąd pobierania książek: " + response.getData());
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                if (response.getType() == ResponseType.SUCCESS) {
+                    @SuppressWarnings("unchecked")
+                    List<Book> topBooks = (List<Book>) response.getData();
+                    displayBooks(topBooks);
+                    System.out.println("Top books loaded successfully!");
+                } else {
+                    System.err.println("Błąd pobierania książek: " + response.getData());
+                }
             }
-        } catch (Exception e) {
-            System.err.println("Błąd połączenia: " + e.getMessage());
-        }
+
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Błąd połączenia: " + e.getMessage());
+            }
+        });
     }
 
     private void displayBooks(List<Book> books) {
@@ -571,6 +577,74 @@ public class MainController implements Initializable {
         }
     }
 
+    private void showSearchResultsAsync(List<Book> books) {
+        // Wyczyść loading indicator
+        searchBox.getChildren().clear();
+
+        if (books.isEmpty()) {
+            Label noResultsLabel = new Label("No books found. Try a different search term.");
+            noResultsLabel.setStyle("-fx-font-size: 14px; -fx-padding: 20px; -fx-text-fill: #666;");
+            searchBox.getChildren().add(noResultsLabel);
+            return;
+        }
+
+        // Preload obrazów w tle
+        String[] imagePaths = books.stream()
+                .map(Book::getCoverImagePath)
+                .filter(path -> path != null && !path.isEmpty())
+                .toArray(String[]::new);
+
+        if (imagePaths.length > 0) {
+            client.preloadImages(imagePaths);
+        }
+
+        // Dodawaj wyniki jeden po drugim z małym opóźnieniem
+        addSearchResultsProgressive(books, 0);
+    }
+
+    /**
+     * Progresywne dodawanie wyników wyszukiwania
+     */
+    private void addSearchResultsProgressive(List<Book> books, int currentIndex) {
+        if (currentIndex >= books.size()) {
+            return; // Zakończ gdy wszystkie dodane
+        }
+
+        Book book = books.get(currentIndex);
+
+        // Dodaj pojedynczy wynik
+        Platform.runLater(() -> {
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/searchBokk.fxml"));
+                HBox searchResult = loader.load();
+
+                SearchController controller = loader.getController();
+
+                // WAŻNE: Ustaw podstawowe dane synchronicznie
+                controller.setBasicData(book, currentUser.getUsername());
+                controller.setMainController(this);
+
+                searchBox.getChildren().add(searchResult);
+
+                // Załaduj dodatkowe dane asynchronicznie
+                controller.loadAdditionalDataAsync();
+
+            } catch (IOException e) {
+                System.err.println("Error loading search result for book: " + book.getTitle());
+                e.printStackTrace();
+            }
+
+            // Zaplanuj dodanie kolejnego wyniku po krótkim opóźnieniu
+            if (currentIndex + 1 < books.size()) {
+                Timeline timeline = new Timeline(new KeyFrame(
+                        Duration.millis(50), // 50ms opóźnienia między elementami
+                        e -> addSearchResultsProgressive(books, currentIndex + 1)
+                ));
+                timeline.play();
+            }
+        });
+    }
+
     public void onSearchClicked() {
         hideUserMenu();
         hideNotificationMenu();
@@ -578,25 +652,33 @@ public class MainController implements Initializable {
         String searchTerm = searchField.getText();
         if (searchTerm == null || searchTerm.isBlank()) return;
 
-        try {
-            Request request = new Request(RequestType.SEARCH_BOOK, searchTerm);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.SEARCH_BOOK, searchTerm);
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                List<Book> results = (List<Book>) response.getData();
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                if (response.getType() == ResponseType.SUCCESS) {
+                    @SuppressWarnings("unchecked")
+                    List<Book> results = (List<Book>) response.getData();
 
-                showSearchResults(results);
-                loadRandomQuote();
-                searchPane.setVisible(true);
-                homePane.setVisible(false);
-                bookDetailsPane.setVisible(false);
-                statisticsPane.setVisible(false);
-            } else {
-                System.err.println("Search failed: " + response.getData());
+                    showSearchResults(results);
+                    loadRandomQuote();
+                    searchPane.setVisible(true);
+                    homePane.setVisible(false);
+                    bookDetailsPane.setVisible(false);
+                    statisticsPane.setVisible(false);
+
+                    System.out.println("Search completed for: " + searchTerm);
+                } else {
+                    System.err.println("Search failed: " + response.getData());
+                }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Search error: " + e.getMessage());
+            }
+        });
     }
 
     public void onHomeClicked() {
@@ -827,38 +909,45 @@ public class MainController implements Initializable {
     private void loadBookDetailsReadingStatus() {
         if (currentBookDetails == null || currentUser == null) return;
 
-        try {
-            Map<String, Object> data = new HashMap<>();
-            data.put("username", currentUser.getUsername());
-            data.put("bookId", currentBookDetails.getBookId());
+        Map<String, Object> data = new HashMap<>();
+        data.put("username", currentUser.getUsername());
+        data.put("bookId", currentBookDetails.getBookId());
 
-            Request request = new Request(RequestType.GET_READING_STATUS, data);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.GET_READING_STATUS, data);
 
-            isUpdatingStatus = true;
-
-            if (response.getType() == ResponseType.SUCCESS) {
-                String status = (String) response.getData();
-                if (status == null || status.trim().isEmpty()) {
-                    detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
-                    setBookDetailsComboBoxStyle(true);
-                } else {
-                    detailsStatusCombo.getSelectionModel().select(status);
-                    setBookDetailsComboBoxStyle(false);
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                isUpdatingStatus = true;
+                try {
+                    if (response.getType() == ResponseType.SUCCESS) {
+                        String status = (String) response.getData();
+                        if (status == null || status.trim().isEmpty()) {
+                            detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+                            setBookDetailsComboBoxStyle(true);
+                        } else {
+                            detailsStatusCombo.getSelectionModel().select(status);
+                            setBookDetailsComboBoxStyle(false);
+                        }
+                    } else {
+                        System.err.println("Error loading reading status: " + response.getData());
+                        detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+                        setBookDetailsComboBoxStyle(true);
+                    }
+                } finally {
+                    isUpdatingStatus = false;
                 }
-            } else {
-                System.err.println("Error loading reading status: " + response.getData());
-                detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
-                setBookDetailsComboBoxStyle(true);
             }
 
-        } catch (Exception e) {
-            System.err.println("Exception loading reading status: " + e.getMessage());
-            detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
-            setBookDetailsComboBoxStyle(true);
-        } finally {
-            isUpdatingStatus = false;
-        }
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Exception loading reading status: " + e.getMessage());
+                isUpdatingStatus = true;
+                detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+                setBookDetailsComboBoxStyle(true);
+                isUpdatingStatus = false;
+            }
+        });
     }
 
     private void updateBookDetailsReadingStatus(String selectedStatus) {

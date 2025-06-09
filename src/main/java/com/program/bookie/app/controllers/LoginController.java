@@ -1,6 +1,7 @@
 package com.program.bookie.app.controllers;
 
 import com.program.bookie.client.Client;
+import com.program.bookie.client.NotificationService;
 import com.program.bookie.models.*;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -33,7 +34,7 @@ public class LoginController implements Initializable {
     @FXML
     private PasswordField enterPasswordField;
     @FXML
-    private Button registerButton;
+    private Button registerButton, loginButton;
 
 
     private Client client;
@@ -45,6 +46,7 @@ public class LoginController implements Initializable {
         if (!client.connect()) {
             loginMessageLabel.setText("Cannot connect to server");
         }
+
     }
 
     public void loginButtonOnAction(ActionEvent event) {
@@ -56,6 +58,10 @@ public class LoginController implements Initializable {
     }
 
     public void cancelButtonOnAction(ActionEvent event) {
+        NotificationService notificationService = NotificationService.getInstance();
+        if (notificationService != null) {
+            notificationService.stop();
+        }
         if (client != null) {
             System.out.println("Disconnecting client...");
             client.disconnect();
@@ -68,24 +74,36 @@ public class LoginController implements Initializable {
         String username = usernameTextField.getText().trim();
         String password = enterPasswordField.getText();
 
-        try {
-            LoginData loginData = new LoginData(username, password);
-            Request request = new Request(RequestType.LOGIN, loginData);
+        LoginData loginData = new LoginData(username, password);
+        Request request = new Request(RequestType.LOGIN, loginData);
 
-            Response response = client.sendRequest(request);
+            client.executeAsyncWithData(request, new Client.ResponseHandler() {
+                @Override
+                public void handle(Response response) {
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                User user = (User) response.getData();
-                openMainWindow(user);
+                    loginButton.setDisable(false);
+                    registerButton.setDisable(false);
 
+                    if (response.getType() == ResponseType.SUCCESS) {
+                        User user = (User) response.getData();
+                        openMainWindow(user);
+                    } else {
+                        loginMessageLabel.setText((String) response.getData());
+                        loginMessageLabel.setStyle("-fx-text-fill: red;");
+                    }
+                }
 
-            } else {
-                loginMessageLabel.setText((String) response.getData());
-            }
+                @Override
+                public void handleError(Exception e) {
+                    // Odblokuj przyciski
+                    loginButton.setDisable(false);
+                    registerButton.setDisable(false);
 
-        } catch (Exception e) {
-            loginMessageLabel.setText("Connection error: " + e.getMessage());
-        }
+                    loginMessageLabel.setText("Connection error: " + e.getMessage());
+                    loginMessageLabel.setStyle("-fx-text-fill: red;");
+                }
+            });
+
     }
 
     public void openMainWindow(User u){
