@@ -13,6 +13,7 @@ public class Book implements Serializable {
     private String genre;
     private int publicationYear;
     private int pages;
+    private int currentPage=0;
 
     public Book() {}
 
@@ -76,5 +77,31 @@ public class Book implements Serializable {
                 ", ratingCount=" + ratingCount +
                 ", pages=" + pages +
                 '}';
+    }
+
+    public int getCurrentPage() {
+        return currentPage;
+    }
+
+    public void setCurrentPage(int currentPage) {
+        this.currentPage = currentPage;
+    }
+
+    /**
+     * Oblicza postęp w procentach
+     */
+    public double getProgressPercentage() {
+        int total = getPages();
+        if (total <= 0) return 0.0;
+
+        double percentage = (currentPage * 100.0) / total;
+        return Math.min(100.0, Math.max(0.0, percentage));
+    }
+
+    /**
+     * Sprawdza czy książka jest ukończona
+     */
+    public boolean isCompleted() {
+        return getCurrentPage() >= getPages() && getPages() > 0;
     }
 }

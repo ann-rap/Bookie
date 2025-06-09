@@ -1146,7 +1146,6 @@ public class MainController implements Initializable {
             loadShelfItems(wantToReadContainer, wantToReadCount, "Want to read");
 
             updateAllScrollButtons();
-            refreshShelvesIfNeeded();
 
         } catch (Exception e) {
             System.err.println("Error loading user shelves: " + e.getMessage());
@@ -1216,7 +1215,7 @@ public class MainController implements Initializable {
         }).start();
     }
 
-    private void openProgressEditDialog(Book book, Pane progressFill, Label progressLabel, Pane progressBackground) {
+    private void openProgressEditDialog(Book book) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/progressEdit.fxml"));
             AnchorPane progressPane = loader.load();
@@ -1225,12 +1224,17 @@ public class MainController implements Initializable {
             controller.setBookData(book, currentUser.getUsername());
             controller.setProgressUpdateCallback((newProgress) -> {
                 Platform.runLater(() -> {
-                    double percentage = newProgress.getProgressPercentage();
-                    updateProgressBar(progressFill, progressLabel, progressBackground, percentage);
+                    // Zaktualizuj dane w obiekcie book
+                    book.setCurrentPage(newProgress.getCurrentPage());
+                    book.setPages(newProgress.getPages());
 
+                    // Odśwież statystyki
                     if (statisticsPane.isVisible() && currentStatisticsController != null) {
                         currentStatisticsController.refreshStatistics();
                     }
+
+                    // Odśwież półki
+                    refreshShelvesIfNeeded();
                 });
             });
 
@@ -1248,38 +1252,6 @@ public class MainController implements Initializable {
         }
     }
 
-    private void loadBookProgress(Book book, Pane progressFill, Label progressLabel, Pane progressBackground) {
-        new Thread(() -> {
-            try {
-                Map<String, Object> data = new HashMap<>();
-                data.put("username", currentUser.getUsername());
-                data.put("bookId", book.getBookId());
-
-                Request request = new Request(RequestType.GET_BOOK_PROGRESS, data);
-                Response response = client.sendRequest(request);
-
-                Platform.runLater(() -> {
-                    if (response.getType() == ResponseType.SUCCESS) {
-                        BookProgress progress = (BookProgress) response.getData();
-                        if (progress != null) {
-                            double percentage = progress.getProgressPercentage();
-                            updateProgressBar(progressFill, progressLabel, progressBackground, percentage);
-                        } else {
-                            checkAndSetReadProgress(book, progressFill, progressLabel, progressBackground);
-                        }
-                    } else {
-                        checkAndSetReadProgress(book, progressFill, progressLabel, progressBackground);
-                    }
-                });
-
-            } catch (Exception e) {
-                System.err.println("Error loading book progress: " + e.getMessage());
-                Platform.runLater(() -> {
-                    checkAndSetReadProgress(book, progressFill, progressLabel, progressBackground);
-                });
-            }
-        }).start();
-    }
 
     private void checkAndSetReadProgress(Book book, Pane progressFill, Label progressLabel, Pane progressBackground) {
         new Thread(() -> {

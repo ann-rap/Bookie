@@ -41,7 +41,7 @@ public class ProgressEditController implements Initializable {
     private Book currentBook;
     private String currentUsername;
     private Client client = Client.getInstance();
-    private Consumer<BookProgress> progressUpdateCallback;
+    private Consumer<Book> progressUpdateCallback;
 
     private boolean isUpdatingFromSlider = false;
     private boolean isUpdatingFromText = false;
@@ -77,9 +77,10 @@ public class ProgressEditController implements Initializable {
         loadCurrentProgress();
     }
 
-    public void setProgressUpdateCallback(Consumer<BookProgress> callback) {
+    public void setProgressUpdateCallback(Consumer<Book> callback) {
         this.progressUpdateCallback = callback;
     }
+
 
     private void loadBookCover() {
         if (bookCoverImage == null || currentBook == null) return;
@@ -121,9 +122,9 @@ public class ProgressEditController implements Initializable {
             Response response = client.sendRequest(request);
 
             if (response.getType() == ResponseType.SUCCESS) {
-                BookProgress progress = (BookProgress) response.getData();
-                if (progress != null) {
-                    updateUIWithProgress(progress);
+                Book bookWithProgress = (Book) response.getData();
+                if (bookWithProgress != null) {
+                    updateUIWithProgress(bookWithProgress);
                 } else {
                     setDefaultProgress();
                 }
@@ -137,31 +138,20 @@ public class ProgressEditController implements Initializable {
         }
     }
 
-    private void updateUIWithProgress(BookProgress progress) {
+    private void updateUIWithProgress(Book book) {
         Platform.runLater(() -> {
             if (currentPageField != null) {
-                currentPageField.setText(String.valueOf(progress.getCurrentPage()));
-                currentPageField.setStyle("-fx-font-size: 16; -fx-border-color: #658C4C; -fx-border-width: 2px; -fx-border-radius: 5px; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
+                currentPageField.setText(String.valueOf(book.getCurrentPage()));
             }
             if (totalPagesField != null) {
-                int totalPages = progress.getTotalPages();
-                if (totalPages <= 0 || totalPages == 300) { // 300 to domyślna wartość
-                    if (currentBook != null && currentBook.getPages() > 0) {
-                        totalPages = currentBook.getPages();
-                    }
-                }
-                totalPagesField.setText(String.valueOf(totalPages));
+                totalPagesField.setText(String.valueOf(book.getPages()));
                 totalPagesField.setEditable(false);
-                totalPagesField.setStyle("-fx-opacity: 0.7; -fx-font-size: 16; -fx-border-color: #658C4C; -fx-border-width: 2px; -fx-border-radius: 5px; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
             }
             if (progressSlider != null) {
-                progressSlider.setValue(progress.getProgressPercentage());
+                progressSlider.setValue(book.getProgressPercentage());
             }
             if (progressLabel != null) {
-                progressLabel.setText(String.format("Progress: %.0f%%", progress.getProgressPercentage()));
-            }
-            if (saveButton != null) {
-                saveButton.setStyle("-fx-background-color: #839174; -fx-font-size: 16; -fx-background-radius: 5px;");
+                progressLabel.setText(String.format("Progress: %.0f%%", book.getProgressPercentage()));
             }
 
             setupListeners();
@@ -294,47 +284,32 @@ public class ProgressEditController implements Initializable {
     public void onSaveClicked(ActionEvent event) {
         try {
             int currentPage = Integer.parseInt(currentPageField.getText());
-            int totalPages = Integer.parseInt(totalPagesField.getText());
 
-            if (currentPage < 0 || totalPages <= 0) {
+            if (currentPage < 0) {
                 showAlert("Invalid Input", "Please enter valid page numbers.");
                 return;
             }
 
-            if (currentPage > totalPages) {
-                currentPage = totalPages;
+            if (currentPage > currentBook.getPages()) {
+                currentPage = currentBook.getPages();
                 currentPageField.setText(String.valueOf(currentPage));
             }
 
-            BookProgress progress = new BookProgress();
-            progress.setUsername(currentUsername);
-            progress.setBookId(currentBook.getBookId());
-            progress.setCurrentPage(currentPage);
-            progress.setTotalPages(totalPages);
+            currentBook.setCurrentPage(currentPage);
 
-            Request request = new Request(RequestType.UPDATE_BOOK_PROGRESS, progress);
+            Map<String, Object> data = new HashMap<>();
+            data.put("username", currentUsername);
+            data.put("bookId", currentBook.getBookId());
+            data.put("currentPage", currentPage);
+
+            Request request = new Request(RequestType.UPDATE_PROGRESS, data);
             Response response = client.sendRequest(request);
 
             if (response.getType() == ResponseType.SUCCESS) {
                 System.out.println("Progress updated successfully");
 
-                double percentage = progress.getProgressPercentage();
-                String newStatus = null;
-
-                if (percentage >= 100.0) {
-                    newStatus = "Read";
-                } else if (percentage > 0) {
-                    newStatus = "Currently reading";
-                } else {
-                    newStatus = "Want to read";
-                }
-
-                if (newStatus != null) {
-                    updateReadingStatus(currentBook.getBookId(), currentUsername, newStatus);
-                }
-
                 if (progressUpdateCallback != null) {
-                    progressUpdateCallback.accept(progress);
+                    progressUpdateCallback.accept(currentBook); // Przekaż zaktualizowany Book
                 }
 
                 closeWindow();

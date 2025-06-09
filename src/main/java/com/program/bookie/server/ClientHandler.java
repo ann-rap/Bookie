@@ -110,10 +110,12 @@ public class ClientHandler implements Runnable {
                 return handleAddComment(request);
             case GET_USER_BOOKS_BY_STATUS:
                 return handleGetUserBooksByStatus(request);
+            case GET_BOOK_WITH_PROGRESS:
+                return handleGetBookWithProgress(request);
+            case UPDATE_PROGRESS:
+                return handleUpdateProgress(request);
             case GET_BOOK_PROGRESS:
                 return handleGetBookProgress(request);
-            case UPDATE_BOOK_PROGRESS:
-                return handleUpdateBookProgress(request);
             default:
                 return new Response(ResponseType.ERROR, "Nieznany typ żądania");
         }
@@ -175,7 +177,30 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private Response handleSearch(Request request) {
+    private Response handleGetBookProgress(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
+
+            if (username == null || bookId == null) {
+                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            }
+
+            Book bookWithProgress = dbManager.getBookWithProgress(username, bookId);
+            return new Response(ResponseType.SUCCESS, bookWithProgress);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetBookProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetBookProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }}
+
+
+        private Response handleSearch(Request request) {
         try {
             String title = (String) request.getData();
             List<Book> topBooks = dbManager.searchByTitle(title);
@@ -492,7 +517,7 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private Response handleGetBookProgress(Request request) {
+    private Response handleGetBookWithProgress(Request request) {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) request.getData();
@@ -503,45 +528,42 @@ public class ClientHandler implements Runnable {
                 return new Response(ResponseType.ERROR, "Missing username or bookId");
             }
 
-            BookProgress progress = dbManager.getBookProgress(username, bookId);
-            return new Response(ResponseType.SUCCESS, progress);
+            Book bookWithProgress = dbManager.getBookWithProgress(username, bookId);
+            return new Response(ResponseType.SUCCESS, bookWithProgress);
 
         } catch (SQLException e) {
-            System.err.println("Database error in handleGetBookProgress: " + e.getMessage());
+            System.err.println("Database error in handleGetBookWithProgress: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error in handleGetBookProgress: " + e.getMessage());
+            System.err.println("Error in handleGetBookWithProgress: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 
-    private Response handleUpdateBookProgress(Request request) {
+    private Response handleUpdateProgress(Request request) {
         try {
-            BookProgress progress = (BookProgress) request.getData();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
+            Integer currentPage = (Integer) data.get("currentPage");
 
-            if (progress.getUsername() == null || progress.getBookId() == 0) {
-                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            if (username == null || bookId == null || currentPage == null) {
+                return new Response(ResponseType.ERROR, "Missing username, bookId, or currentPage");
             }
 
-            if (progress.getCurrentPage() < 0 || progress.getTotalPages() <= 0 ||
-                    progress.getCurrentPage() > progress.getTotalPages()) {
-                return new Response(ResponseType.ERROR, "Invalid page numbers");
+            if (currentPage < 0) {
+                return new Response(ResponseType.ERROR, "Invalid page number");
             }
 
-            dbManager.updateBookProgress(
-                    progress.getUsername(),
-                    progress.getBookId(),
-                    progress.getCurrentPage(),
-                    progress.getTotalPages()
-            );
-
-            return new Response(ResponseType.SUCCESS, "Book progress updated successfully");
+            dbManager.updateBookProgress(username, bookId, currentPage);
+            return new Response(ResponseType.SUCCESS, "Progress updated successfully");
 
         } catch (SQLException e) {
-            System.err.println("Database error in handleUpdateBookProgress: " + e.getMessage());
+            System.err.println("Database error in handleUpdateProgress: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error in handleUpdateBookProgress: " + e.getMessage());
+            System.err.println("Error in handleUpdateProgress: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }

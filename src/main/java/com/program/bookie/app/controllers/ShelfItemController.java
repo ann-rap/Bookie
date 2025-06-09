@@ -57,7 +57,7 @@ public class ShelfItemController implements Initializable {
         adjustFontSizes();
 
         setupBookCover(book);
-        loadProgress();
+        displayProgressFromBook(book, status);
     }
 
     private void setupClickableArea() {
@@ -191,54 +191,28 @@ public class ShelfItemController implements Initializable {
         }
     }
 
-    private void loadProgress() {
-        showProgressElements();
-
-        if (!"Currently reading".equals(currentStatus)) {
-            if ("Read".equals(currentStatus)) {
-                updateProgressDisplay(100.0);
-            } else {
-                updateProgressDisplay(0.0);
-            }
-            return;
-        }
-
-        try {
-            Map<String, Object> data = new HashMap<>();
-            data.put("username", currentUsername);
-            data.put("bookId", currentBook.getBookId());
-
-            Request request = new Request(RequestType.GET_BOOK_PROGRESS, data);
-            Response response = client.sendRequest(request);
-
-            if (response.getType() == ResponseType.SUCCESS) {
-                BookProgress progress = (BookProgress) response.getData();
-                if (progress != null) {
-                    updateProgressDisplay(progress.getProgressPercentage());
-                } else {
-                    updateProgressDisplay(0);
-                }
-            } else {
-                updateProgressDisplay(0);
-            }
-
-        } catch (Exception e) {
-            System.err.println("Error loading progress: " + e.getMessage());
-            updateProgressDisplay(0);
-        }
-    }
-
-    private void showProgressElements() {
-        Platform.runLater(() -> {
-            if (readingProgress != null) readingProgress.setVisible(true);
-            if (progressLabel != null) progressLabel.setVisible(true);
-            if (editProgressButton != null) editProgressButton.setVisible(true);
-        });
-    }
-
-    private void updateProgressDisplay(double percentage) {
+    /**
+     * Wyświetl postęp na podstawie danych już obecnych w Book
+     */
+    private void displayProgressFromBook(Book book, String status) {
         Platform.runLater(() -> {
             if (readingProgress != null && progressLabel != null) {
+                double percentage = 0.0;
+
+                switch (status) {
+                    case "Read":
+                        percentage = 100.0;
+                        break;
+                    case "Currently reading":
+                        // Book już ma current_page z zapytania getUserBooksByStatus()
+                        percentage = book.getProgressPercentage();
+                        break;
+                    case "Want to read":
+                    default:
+                        percentage = 0.0;
+                        break;
+                }
+
                 readingProgress.setProgress(percentage / 100.0);
                 progressLabel.setText(String.format("%.0f%%", percentage));
 
@@ -248,18 +222,16 @@ public class ShelfItemController implements Initializable {
                                 "-fx-background-color: white;" +
                                 "-fx-border-color: #cccccc;" +
                                 "-fx-border-width: 1px;" +
-                                "-fx-pref-height: 16px;" +
-                                "-fx-max-height: 16px;" +
-                                "-fx-min-height: 16px;"
+                                "-fx-pref-height: 16px;"
                 );
 
                 readingProgress.setVisible(true);
                 progressLabel.setVisible(true);
-
                 editProgressButton.setVisible(true);
             }
         });
     }
+
 
     @FXML
     private void onEditProgressClicked() {
@@ -274,9 +246,12 @@ public class ShelfItemController implements Initializable {
             ProgressEditController controller = loader.getController();
             controller.setBookData(currentBook, currentUsername);
 
-            controller.setProgressUpdateCallback(progress -> {
+            controller.setProgressUpdateCallback(updatedBook -> {
                 Platform.runLater(() -> {
-                    loadProgress();
+                    currentBook.setCurrentPage(updatedBook.getCurrentPage());
+
+                    displayProgressFromBook(currentBook, currentStatus);
+
                     if (mainController != null) {
                         mainController.refreshShelvesIfNeeded();
                     }
