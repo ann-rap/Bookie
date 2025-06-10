@@ -1353,15 +1353,16 @@ public class MainController implements Initializable {
     private void loadShelfItems(HBox container, Label countLabel, String status) {
         if (currentUser == null) return;
 
-        new Thread(() -> {
-            try {
-                Map<String, Object> data = new HashMap<>();
-                data.put("username", currentUser.getUsername());
-                data.put("status", status);
+        Map<String, Object> data = new HashMap<>();
+        data.put("username", currentUser.getUsername());
+        data.put("status", status);
 
-                Request request = new Request(RequestType.GET_USER_BOOKS_BY_STATUS, data);
-                Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.GET_USER_BOOKS_BY_STATUS, data);
 
+        // Użyj executeAsyncWithData zamiast Thread + sendRequest
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
                 if (response.getType() == ResponseType.SUCCESS) {
                     @SuppressWarnings("unchecked")
                     List<Book> books = (List<Book>) response.getData();
@@ -1384,9 +1385,8 @@ public class MainController implements Initializable {
                                     FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/shelfItem.fxml"));
                                     VBox shelfItem = loader.load();
 
-
                                     ShelfItemController controller = loader.getController();
-                                    controller.setData(book, currentUser.getUsername(), status, this);
+                                    controller.setData(book, currentUser.getUsername(), status, MainController.this);
 
                                     container.getChildren().add(shelfItem);
 
@@ -1405,11 +1405,39 @@ public class MainController implements Initializable {
                             }
                         }
                     });
+                } else {
+                    Platform.runLater(() -> {
+                        container.getChildren().clear();
+                        Label errorLabel = new Label("Error loading books: " + response.getData());
+                        errorLabel.setStyle("-fx-text-fill: red; -fx-font-size: 14px; -fx-padding: 40;");
+                        container.getChildren().add(errorLabel);
+                        container.setAlignment(Pos.CENTER);
+
+                        if (countLabel != null) {
+                            countLabel.setText("(0)");
+                            countLabel.setStyle("-fx-text-fill: red;");
+                        }
+                    });
                 }
-            } catch (Exception e) {
-                System.err.println("Error loading shelf items: " + e.getMessage());
             }
-        }).start();
+
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Error loading shelf items for status '" + status + "': " + e.getMessage());
+                Platform.runLater(() -> {
+                    container.getChildren().clear();
+                    Label errorLabel = new Label("Connection error");
+                    errorLabel.setStyle("-fx-text-fill: red; -fx-font-size: 14px; -fx-padding: 40;");
+                    container.getChildren().add(errorLabel);
+                    container.setAlignment(Pos.CENTER);
+
+                    if (countLabel != null) {
+                        countLabel.setText("(!)");
+                        countLabel.setStyle("-fx-text-fill: red;");
+                    }
+                });
+            }
+        });
     }
 
     private void openProgressEditDialog(Book book) {
