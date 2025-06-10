@@ -103,6 +103,14 @@ public class ClientHandler implements Runnable {
                 return handleGetReviewComments(request);
             case ADD_COMMENT:
                 return handleAddComment(request);
+            case GET_USER_BOOKS_BY_STATUS:
+                return handleGetUserBooksByStatus(request);
+            case GET_BOOK_WITH_PROGRESS:
+                return handleGetBookWithProgress(request);
+            case UPDATE_PROGRESS:
+                return handleUpdateProgress(request);
+            case GET_BOOK_PROGRESS:
+                return handleGetBookProgress(request);
             case GET_NOTIFICATION_COUNT:
                 return handleGetNotificationCount(request);
             case GET_NOTIFICATIONS:
@@ -179,7 +187,30 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private Response handleSearch(Request request) {
+    private Response handleGetBookProgress(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
+
+            if (username == null || bookId == null) {
+                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            }
+
+            Book bookWithProgress = dbManager.getBookWithProgress(username, bookId);
+            return new Response(ResponseType.SUCCESS, bookWithProgress);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetBookProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetBookProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }}
+
+
+        private Response handleSearch(Request request) {
         try {
             String title = (String) request.getData();
             List<Book> topBooks = dbManager.searchByTitle(title);
@@ -225,6 +256,7 @@ public class ClientHandler implements Runnable {
             }
 
             dbManager.updateStatus(username, bookId, status);
+
             logger.info("STATUS_UPDATE - User: " + username + ", Book: " + bookId + ", Status: " + status);
             return new Response(ResponseType.SUCCESS, "Reading status updated successfully");
 
@@ -466,8 +498,7 @@ public class ClientHandler implements Runnable {
             return new Response(ResponseType.ERROR, "Unexpected error: " + e.getMessage());
         }
     }
-
-    private Response handleGetNotificationCount(Request request) {
+     private Response handleGetNotificationCount(Request request) {
         try {
             String username = (String) request.getData();
 
@@ -486,13 +517,8 @@ public class ClientHandler implements Runnable {
             return new Response(ResponseType.ERROR, "Error: " + e.getMessage());
         }
     }
-
     private Response handleGetNotifications(Request request) {
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) request.getData();
-            String username = (String) data.get("username");
-            Boolean unreadOnly = (Boolean) data.get("unreadOnly");
+  Boolean unreadOnly = (Boolean) data.get("unreadOnly");
 
             if (username == null || username.trim().isEmpty()) {
                 return new Response(ResponseType.ERROR, "Username is required");
@@ -510,12 +536,8 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private Response handleMarkNotificationsRead(Request request) {
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) request.getData();
-            String username = (String) data.get("username");
-            List<Integer> notificationIds = (List<Integer>) data.get("notificationIds");
+private Response handleMarkNotificationsRead(Request request) {
+    List<Integer> notificationIds = (List<Integer>) data.get("notificationIds");
 
             if (username == null || notificationIds == null) {
                 return new Response(ResponseType.ERROR, "Username and notification IDs required");
@@ -531,6 +553,83 @@ public class ClientHandler implements Runnable {
             return new Response(ResponseType.ERROR, "Error: " + e.getMessage());
         }
     }
+
+    private Response handleGetUserBooksByStatus(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            String status = (String) data.get("status");
+
+            System.out.println("handleGetUserBooksByStatus - username: " + username + ", status: " + status);
+
+            if (username == null || status == null) {
+                return new Response(ResponseType.ERROR, "Missing username or status");
+            }
+
+            List<Book> userBooks = dbManager.getUserBooksByStatus(username, status);
+            System.out.println("Found " + userBooks.size() + " books for status: " + status);
+            return new Response(ResponseType.SUCCESS, userBooks);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetUserBooksByStatus: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetUserBooksByStatus: " + e.getMessage());
+            e.printStackTrace();
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleGetBookWithProgress(Request request) {
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
+
+            if (username == null || bookId == null) {
+                return new Response(ResponseType.ERROR, "Missing username or bookId");
+            }
+
+            Book bookWithProgress = dbManager.getBookWithProgress(username, bookId);
+            return new Response(ResponseType.SUCCESS, bookWithProgress);
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleGetBookWithProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleGetBookWithProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
+        }
+    }
+
+    private Response handleUpdateProgress(Request request) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) request.getData();
+            String username = (String) data.get("username");
+            Integer bookId = (Integer) data.get("bookId");
+            Integer currentPage = (Integer) data.get("currentPage");
+
+            if (username == null || bookId == null || currentPage == null) {
+                return new Response(ResponseType.ERROR, "Missing username, bookId, or currentPage");
+            }
+
+            if (currentPage < 0) {
+                return new Response(ResponseType.ERROR, "Invalid page number");
+            }
+
+            dbManager.updateBookProgress(username, bookId, currentPage);
+            return new Response(ResponseType.SUCCESS, "Progress updated successfully");
+
+        } catch (SQLException e) {
+            System.err.println("Database error in handleUpdateProgress: " + e.getMessage());
+            return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error in handleUpdateProgress: " + e.getMessage());}}
+        
 
     private Response handleClearNotifications(Request request) {
         try {
@@ -571,6 +670,7 @@ public class ClientHandler implements Runnable {
             return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
+
 
     private int getUserIdFromUsername(String username) throws SQLException {
         return dbManager.getUserIdByUsername(username);

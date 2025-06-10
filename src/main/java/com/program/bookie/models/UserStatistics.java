@@ -16,8 +16,6 @@ public class UserStatistics implements Serializable {
     private LocalDate accountCreatedDate;
     private long daysAsUser;
 
-    public UserStatistics() {}
-
     public UserStatistics(int booksRead, int booksCurrentlyReading, int booksWantToRead,
                           int totalPagesRead, int reviewsWritten, double averageRating,
                           LocalDate accountCreatedDate) {
