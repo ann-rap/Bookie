@@ -204,11 +204,9 @@ public class DatabaseConnection {
                     rs.getString("genre"),
                     rs.getInt("publication_year"),
                     rs.getInt("pages")
-            ));
-
+            );
 
             book.setReviewCount(rs.getInt("review_count"));
-
             results.add(book);
 
         }
@@ -1351,7 +1349,7 @@ public class DatabaseConnection {
             updateReadingCount(username, bookId);
         }
     }
-     * Adds a new notification to the database
+    /* * Adds a new notification to the database
      */
     public int addNotification(INotification notification, Map<String, String> additionalData) throws SQLException {
         System.out.println("=== ADD NOTIFICATION TO DATABASE ===");
@@ -1576,31 +1574,6 @@ public class DatabaseConnection {
                 notification = commentNotif;
                 break;
 
-            case "READING_REMINDER":
-                System.out.println("🏗️ Creating ReadingReminderNotification");
-                ReadingReminderNotification reminderNotif = new ReadingReminderNotification();
-
-                // Ustaw title i message z bazy danych używając setterów
-                reminderNotif.setTitle(rs.getString("title"));
-                reminderNotif.setMessage(rs.getString("message"));
-
-                String bookIdValueReminder = rs.getString("book_id_value");
-                if (bookIdValueReminder != null) {
-                    try {
-                        int bookIdReminder = Integer.parseInt(bookIdValueReminder);
-                        reminderNotif.setBookId(bookIdReminder);
-                        reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.SPECIFIC_BOOK);
-                        System.out.println("✅ Set reminder for specific book ID: " + bookIdReminder);
-                    } catch (NumberFormatException e) {
-                        reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.GENERAL_READING);
-                        System.out.println("✅ Set general reading reminder");
-                    }
-                } else {
-                    reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.GENERAL_READING);
-                    System.out.println("✅ Set general reading reminder (no book_id)");
-                }
-                notification = reminderNotif;
-                break;
 
             default:
                 System.err.println("❌ Unknown notification type: " + type);

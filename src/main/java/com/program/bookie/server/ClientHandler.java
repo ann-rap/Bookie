@@ -518,7 +518,11 @@ public class ClientHandler implements Runnable {
         }
     }
     private Response handleGetNotifications(Request request) {
-  Boolean unreadOnly = (Boolean) data.get("unreadOnly");
+        try{
+            @SuppressWarnings("unchecked")
+            Map<String,Object> data = (Map<String, Object>) request.getData();
+            String username=(String)data.get("username");
+            Boolean unreadOnly = (Boolean) data.get("unreadOnly");
 
             if (username == null || username.trim().isEmpty()) {
                 return new Response(ResponseType.ERROR, "Username is required");
@@ -537,7 +541,11 @@ public class ClientHandler implements Runnable {
     }
 
 private Response handleMarkNotificationsRead(Request request) {
-    List<Integer> notificationIds = (List<Integer>) data.get("notificationIds");
+    try{
+        @SuppressWarnings("unchecked")
+        Map<String,Object> data = (Map<String, Object>) request.getData();
+        String username=(String)data.get("username");
+        List<Integer> notificationIds = (List<Integer>) data.get("notificationIds");
 
             if (username == null || notificationIds == null) {
                 return new Response(ResponseType.ERROR, "Username and notification IDs required");
@@ -628,7 +636,9 @@ private Response handleMarkNotificationsRead(Request request) {
             System.err.println("Database error in handleUpdateProgress: " + e.getMessage());
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error in handleUpdateProgress: " + e.getMessage());}}
+            System.err.println("Error in handleUpdateProgress: " + e.getMessage());
+        return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());}
+    }
         
 
     private Response handleClearNotifications(Request request) {

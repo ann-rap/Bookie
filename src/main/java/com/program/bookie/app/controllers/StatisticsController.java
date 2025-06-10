@@ -256,7 +256,7 @@ public class StatisticsController implements Initializable {
                 {
 
                 mostPopularBookLabel.setText(displayText);
-                mostPopularCountLabel.setText(book.getReviewCount() + " reviews");
+                mostPopularCountLabel.setText(book.getReviewCount() + " reviews");}
 
             } else {
                 if (mostPopularBookLabel != null) mostPopularBookLabel.setText("No popular books found");

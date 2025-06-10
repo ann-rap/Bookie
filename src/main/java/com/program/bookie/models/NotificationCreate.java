@@ -10,11 +10,4 @@ public class NotificationCreate {
     }
 
 
-    public static ReadingReminderNotification createBookReminder(int userId, String bookTitle, int bookId) {
-        return new ReadingReminderNotification(userId, bookTitle, bookId);
-    }
-
-    public static ReadingReminderNotification createGeneralReminder(int userId) {
-        return new ReadingReminderNotification(userId);
-    }
 }
