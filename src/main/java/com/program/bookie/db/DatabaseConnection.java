@@ -130,7 +130,7 @@ public class DatabaseConnection {
                COALESCE(AVG(r.rating), 0) as avg_rating,
                COUNT(r.rating) as rating_count,
                COUNT(CASE WHEN r.content IS NOT NULL AND TRIM(r.content) != '' THEN 1 END) as review_count,
-               b.description, b.genre, b.publication_year
+               b.description, b.genre, b.publication_year,b.pages
         FROM books b 
         LEFT JOIN reviews r ON b.book_id = r.book_id 
         GROUP BY b.book_id, b.title, b.author, b.cover_image, 
