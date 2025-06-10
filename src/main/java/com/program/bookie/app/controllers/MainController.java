@@ -329,7 +329,7 @@ public class MainController implements Initializable {
             if (client != null) {
                 System.out.println("Logging out user: " + currentUser.getUsername());
                 client.clearImageCache();
-                client.disconnect();
+                Client.resetInstance();
             }
 
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/login.fxml"));

@@ -74,6 +74,13 @@ public class Client {
         }
     }
 
+    public static synchronized void resetInstance() {
+        if (instance != null) {
+            instance.disconnect();
+            instance = null;
+        }
+    }
+
     public void disconnect() {
         try {
             //WAZNE: Zamkniecie puli watkow
