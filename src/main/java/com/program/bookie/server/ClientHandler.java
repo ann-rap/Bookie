@@ -15,8 +15,11 @@ import java.util.Map;
 import com.program.bookie.models.ReadingInsights;
 import com.program.bookie.models.ImageData;
 import java.io.FileNotFoundException;
+import java.util.logging.Logger;
 
 public class ClientHandler implements Runnable {
+    private static final Logger logger = Logger.getLogger("ServerLogger");
+
     private Socket clientSocket;
     private ObjectInputStream input;
     private ObjectOutputStream output;
@@ -30,7 +33,7 @@ public class ClientHandler implements Runnable {
         this.dbManager = dbManager;
         this.imageService = new ImageService();
         this.clientAddress = socket.getRemoteSocketAddress().toString();
-        System.out.println("New client connected: " + clientAddress);
+        logger.info("CLIENT_CONNECTED - " + clientAddress);
     }
 
     @Override
@@ -45,7 +48,7 @@ public class ClientHandler implements Runnable {
 
 
                     if (request.getType() == RequestType.DISCONNECT) {
-                        System.out.println("Client " + clientAddress + " requested disconnect");
+                        logger.info("CLIENT_DISCONNECTED - " + clientAddress);
                         break;
                     }
 
@@ -53,24 +56,16 @@ public class ClientHandler implements Runnable {
                     output.writeObject(response);
                     output.flush();
                 } catch (SocketException e) {
-                    System.out.println("Client " + clientAddress + " disconnected unexpectedly");
+                    logger.info("CLIENT_DISCONNECTED - " + clientAddress);
                     break;
-                } catch (IOException e) {
-                    if (e.getMessage() != null && e.getMessage().contains("Connection reset")) {
-                        System.out.println("Client " + clientAddress + " connection reset");
-                    } else {
-                        System.out.println("Client " + clientAddress + " disconnected: " + e.getMessage());
-                    }
-                    break;
+
                 } catch (ClassNotFoundException e) {
-                    System.err.println("Error reading request from " + clientAddress + ": " + e.getMessage());
-                    break;
+                    logger.warning("CLIENT_ERROR - " + clientAddress + ": " + e.getMessage());
                 }
             }
         } catch (IOException e) {
-            System.out.println("Error initializing connection with " + clientAddress + ": " + e.getMessage());
+            logger.warning("CLIENT_CONNECTION_ERROR - " + clientAddress + ": " + e.getMessage());
         } finally {
-            System.out.println("Closing connection for client: " + clientAddress);
             closeConnection();
         }}
 
@@ -130,11 +125,14 @@ public class ClientHandler implements Runnable {
             User user = dbManager.authenticateUser(loginData.getUsername(), loginData.getPassword());
             if (user != null) {
                 currentUser = user;
+                logger.info("LOGIN_SUCCESS - User: " + loginData.getUsername() + ", Client: " + clientAddress);
                 return new Response(ResponseType.SUCCESS, user);
             } else {
+                logger.warning("LOGIN_FAILED - User: " + loginData.getUsername() + ", Client: " + clientAddress);
                 return new Response(ResponseType.ERROR, "Invalid username or password");
             }
         } catch (SQLException e) {
+            logger.severe("LOGIN_DB_ERROR - " + e.getMessage());
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         }
     }
@@ -151,16 +149,18 @@ public class ClientHandler implements Runnable {
             );
 
             if (result == ResponseType.SUCCESS) {
-
+                logger.info("REGISTER_SUCCESS - User: " + registerData.getUsername() + ", Client: " + clientAddress);
                 User user = dbManager.authenticateUser(registerData.getUsername(), registerData.getPassword());
                 return new Response(ResponseType.SUCCESS, user);
             } else if (result == ResponseType.INFO) {
                 return new Response(ResponseType.ERROR, "Username already exists");
             } else {
+                logger.warning("REGISTER_FAILED - User: " + registerData.getUsername());
                 return new Response(ResponseType.ERROR, "Registration failed");
             }
 
         } catch (SQLException e) {
+            logger.severe("REGISTER_DB_ERROR - " + e.getMessage());
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
         }
     }
@@ -225,14 +225,12 @@ public class ClientHandler implements Runnable {
             }
 
             dbManager.updateStatus(username, bookId, status);
+            logger.info("STATUS_UPDATE - User: " + username + ", Book: " + bookId + ", Status: " + status);
             return new Response(ResponseType.SUCCESS, "Reading status updated successfully");
 
         } catch (SQLException e) {
-            System.err.println("Database error in handleUpdateReadingStatus: " + e.getMessage());
+            logger.severe("STATUS_UPDATE_ERROR - " + e.getMessage());
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Error in handleUpdateReadingStatus: " + e.getMessage());
-            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 
@@ -301,15 +299,18 @@ public class ClientHandler implements Runnable {
                     review.getReviewText(),
                     review.isSpoiler()
             );
+            String reviewText = review.getReviewText() != null && !review.getReviewText().trim().isEmpty()
+                    ? "with_text" : "rating_only";
+            logger.info("REVIEW_SAVE - User: " + review.getUsername() +
+                    ", Book: " + review.getBookId() +
+                    ", Rating: " + review.getRating() +
+                    ", Type: " + reviewText);
 
             return new Response(ResponseType.SUCCESS, "Review saved successfully");
 
         } catch (SQLException e) {
-            System.err.println("Database error in handleSaveUserReview: " + e.getMessage());
+            logger.severe("REVIEW_SAVE_ERROR - " + e.getMessage());
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Error in handleSaveUserReview: " + e.getMessage());
-            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 
@@ -422,14 +423,12 @@ public class ClientHandler implements Runnable {
             }
 
             dbManager.addCommentWithNotification(comment.getUsername(), comment.getReviewId(), comment.getContent());
+            logger.info("COMMENT_ADD - User: "+comment.getUsername()+" Review: "+comment.getReviewId()+" Comment: "+comment.getContent());
             return new Response(ResponseType.SUCCESS, "Comment added with notification");
 
         } catch (SQLException e) {
-            System.err.println("Database error in handleAddComment: " + e.getMessage());
+            logger.severe("COMMENT_ADD_ERROR - " + e.getMessage());
             return new Response(ResponseType.ERROR, "Database error: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Error in handleAddComment: " + e.getMessage());
-            return new Response(ResponseType.ERROR, "Error processing request: " + e.getMessage());
         }
     }
 
@@ -543,11 +542,12 @@ public class ClientHandler implements Runnable {
 
             int userId = getUserIdFromUsername(username);
             dbManager.clearUserNotifications(userId);
+            logger.info("NOTIFICATIONS_CLEAR - User: " + username);
 
             return new Response(ResponseType.SUCCESS, "Notifications cleared");
 
         } catch (Exception e) {
-            System.err.println("Error clearing notifications: " + e.getMessage());
+            logger.severe("NOTIFICATIONS_CLEAR_ERROR - " + e.getMessage());
             return new Response(ResponseType.ERROR, "Error: " + e.getMessage());
         }
     }
