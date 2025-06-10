@@ -7,8 +7,9 @@ import com.program.bookie.server.QuoteService;
 import java.sql.*;
 import java.time.LocalDate;
 import com.program.bookie.models.UserStatistics;
-import java.util.ArrayList;
-import java.util.List;
+
+import java.util.*;
+
 import com.program.bookie.models.ReadingInsights;
 
 
@@ -128,7 +129,8 @@ public class DatabaseConnection {
         SELECT b.book_id, b.title, b.author, b.cover_image, 
                COALESCE(AVG(r.rating), 0) as avg_rating,
                COUNT(r.rating) as rating_count,
-               b.description, b.genre, b.publication_year, b.pages
+               COUNT(CASE WHEN r.content IS NOT NULL AND TRIM(r.content) != '' THEN 1 END) as review_count,
+               b.description, b.genre, b.publication_year
         FROM books b 
         LEFT JOIN reviews r ON b.book_id = r.book_id 
         GROUP BY b.book_id, b.title, b.author, b.cover_image, 
@@ -156,6 +158,7 @@ public class DatabaseConnection {
                         rs.getInt("publication_year"),
                         rs.getInt("pages")
                 );
+                book.setReviewCount(rs.getInt("review_count"));
                 topBooks.add(book);
             }
         }
@@ -163,42 +166,7 @@ public class DatabaseConnection {
         return topBooks;
     }
 
-    /*
-    Informacje o ksiazce na podstawie id. Bedzie potrzebne do szczegolow o ksiazce.
-     */
-    public Book getBookById(int bookId) throws SQLException {
-        String query = """
-        SELECT b.book_id, b.title, b.author, b.cover_image, 
-               COALESCE(AVG(r.rating), 0) as avg_rating,
-               COUNT(r.rating) as rating_count,
-               b.description, b.genre, b.publication_year
-        FROM books b 
-        LEFT JOIN reviews r ON b.book_id = r.book_id 
-        WHERE b.book_id = ?
-        GROUP BY b.book_id, b.title, b.author, b.cover_image, 
-                 b.description, b.genre, b.publication_year
-        """;
 
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, bookId);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return new Book(
-                        rs.getInt("book_id"),
-                        rs.getString("title"),
-                        rs.getString("author"),
-                        rs.getString("cover_image"),
-                        rs.getDouble("avg_rating"),
-                        rs.getInt("rating_count"),
-                        rs.getString("description"),
-                        rs.getString("genre"),
-                        rs.getInt("publication_year")
-                );
-            }
-        }
-
-        return null;}
 
     /*
     Metoda ktora zwraca liste obiektow Ksiazka, po czesci tytulu.
@@ -211,7 +179,8 @@ public class DatabaseConnection {
         SELECT b.book_id, b.title, b.author, b.cover_image, 
                COALESCE(AVG(r.rating), 0) as avg_rating,
                COUNT(r.rating) as rating_count,
-               b.description, b.genre, b.publication_year, b.pages
+               COUNT(CASE WHEN r.content IS NOT NULL AND TRIM(r.content) != '' THEN 1 END) as review_count,        
+               b.description, b.genre, b.publication_year
         FROM books b 
         LEFT JOIN reviews r ON b.book_id = r.book_id 
         WHERE title LIKE ?
@@ -224,7 +193,7 @@ public class DatabaseConnection {
 
         List<Book> results = new ArrayList<>();
         while (rs.next()) {
-            results.add(new Book(
+            Book book = new Book(
                     rs.getInt("book_id"),
                     rs.getString("title"),
                     rs.getString("author"),
@@ -236,6 +205,12 @@ public class DatabaseConnection {
                     rs.getInt("publication_year"),
                     rs.getInt("pages")
             ));
+
+
+            book.setReviewCount(rs.getInt("review_count"));
+
+            results.add(book);
+
         }
         return results;
     }
@@ -566,9 +541,10 @@ public class DatabaseConnection {
         COUNT(*) as reviews_written,
         COALESCE(AVG(rating), 0) as average_rating
     FROM reviews 
-    WHERE user_id = ?
+    WHERE user_id = ? 
+    AND content IS NOT NULL 
+    AND TRIM(content) != ''
     """;
-
         int reviewsWritten = 0;
         double averageRating = 0.0;
 
@@ -582,41 +558,20 @@ public class DatabaseConnection {
                 }
             }
         }
+        String pagesSql = """
+    SELECT COALESCE(SUM(b.pages), 0) as total_pages
+    FROM user_books ub
+    INNER JOIN books b ON ub.book_id = b.book_id
+    WHERE ub.user_id = ? AND ub.reading_status = 'READ'
+    """;
 
         int totalPagesRead = 0;
 
-        String readBooksSql = """
-        SELECT b.pages, COALESCE(brc.times_read, 1) as times_read
-        FROM user_books ub
-        INNER JOIN books b ON ub.book_id = b.book_id
-        LEFT JOIN book_reading_count brc ON ub.user_id = brc.user_id AND ub.book_id = brc.book_id
-        WHERE ub.user_id = ? AND ub.reading_status = 'read'
-        """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(readBooksSql)) {
+        try (PreparedStatement stmt = connection.prepareStatement(pagesSql)) {
             stmt.setInt(1, userId);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int bookPages = rs.getInt("pages");
-                    int timesRead = rs.getInt("times_read");
-                    totalPagesRead += (bookPages * timesRead);
-                }
-            }
-        }
-
-        String currentlyReadingSql = """
-        SELECT COALESCE(bp.current_page, 0) as current_page
-        FROM user_books ub
-        LEFT JOIN book_progress bp ON ub.user_id = bp.user_id AND ub.book_id = bp.book_id
-        WHERE ub.user_id = ? AND ub.reading_status = 'READING'
-        """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(currentlyReadingSql)) {
-            stmt.setInt(1, userId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int currentPage = rs.getInt("current_page");
-                    totalPagesRead += currentPage;
+                if (rs.next()) {
+                    totalPagesRead = rs.getInt("total_pages");
                 }
             }
         }
@@ -717,6 +672,7 @@ public class DatabaseConnection {
     SELECT b.book_id, b.title, b.author, b.cover_image, 
            COALESCE(AVG(r.rating), 0) as avg_rating,
            COUNT(r.rating) as rating_count,
+           COUNT(CASE WHEN r.content IS NOT NULL AND TRIM(r.content) != '' THEN 1 END) as review_count,
            b.description, b.genre, b.publication_year
     FROM books b 
     LEFT JOIN reviews r ON b.book_id = r.book_id 
@@ -730,7 +686,7 @@ public class DatabaseConnection {
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return new Book(
+                    Book book = new Book(
                             rs.getInt("book_id"),
                             rs.getString("title"),
                             rs.getString("author"),
@@ -741,6 +697,10 @@ public class DatabaseConnection {
                             rs.getString("genre"),
                             rs.getInt("publication_year")
                     );
+
+                    book.setReviewCount(rs.getInt("review_count"));
+
+                    return book;
                 }
             }
         }
@@ -903,6 +863,48 @@ public class DatabaseConnection {
     }
 
     /**
+            * Pobiera książkę po ID wraz ze wszystkimi danymi
+ */
+    public Book getBookById(int bookId) throws SQLException {
+        String sql = """
+    SELECT b.book_id, b.title, b.author, b.cover_image, 
+           COALESCE(AVG(r.rating), 0) as avg_rating,
+           COUNT(r.rating) as rating_count,
+           COUNT(CASE WHEN r.content IS NOT NULL AND TRIM(r.content) != '' THEN 1 END) as review_count,
+           b.description, b.genre, b.publication_year
+    FROM books b 
+    LEFT JOIN reviews r ON b.book_id = r.book_id 
+    WHERE b.book_id = ?
+    GROUP BY b.book_id, b.title, b.author, b.cover_image, 
+             b.description, b.genre, b.publication_year
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, bookId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Book book = new Book(
+                            rs.getInt("book_id"),
+                            rs.getString("title"),
+                            rs.getString("author"),
+                            rs.getString("cover_image"),
+                            rs.getDouble("avg_rating"),
+                            rs.getInt("rating_count"),
+                            rs.getString("description"),
+                            rs.getString("genre"),
+                            rs.getInt("publication_year")
+                    );
+                    book.setReviewCount(rs.getInt("review_count"));
+                    return book;
+                } else {
+                    throw new SQLException("Book not found with ID: " + bookId);
+                }
+            }
+        }
+    }
+
+    /**
      * Pobiera wszystkie reviews dla danej książki wraz z datami
      */
     public List<Review> getBookReviews(int bookId) throws SQLException {
@@ -911,7 +913,8 @@ public class DatabaseConnection {
                r.created_at, r.updated_at, ua.username
         FROM reviews r
         INNER JOIN user_account ua ON r.user_id = ua.account_id
-        WHERE r.book_id = ?
+                        WHERE r.book_id = ? AND r.content IS NOT NULL
+        AND TRIM(r.content) != ''
         ORDER BY r.created_at DESC
         """;
 
@@ -1047,6 +1050,7 @@ public class DatabaseConnection {
     }
 
     /**
+
      * Pobiera książki użytkownika według statusu (do półek)
      */
     public List<Book> getUserBooksByStatus(String username, String status) throws SQLException {
@@ -1347,4 +1351,351 @@ public class DatabaseConnection {
             updateReadingCount(username, bookId);
         }
     }
+     * Adds a new notification to the database
+     */
+    public int addNotification(INotification notification, Map<String, String> additionalData) throws SQLException {
+        System.out.println("=== ADD NOTIFICATION TO DATABASE ===");
+        System.out.println("User ID: " + notification.getUserId());
+        System.out.println("Type: " + notification.getNotificationType());
+        System.out.println("Title: " + notification.getTitle());
+        System.out.println("Message: " + notification.getMessage());
+        System.out.println("Related ID: " + notification.getRelatedId());
+        System.out.println("Is Read: " + notification.isRead());
+
+        String sql = """
+        INSERT INTO notifications (user_id, notification_type, title, message, related_id, is_read)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setInt(1, notification.getUserId());
+            stmt.setString(2, notification.getNotificationType());
+            stmt.setString(3, notification.getTitle());
+            stmt.setString(4, notification.getMessage());
+
+            if (notification.getRelatedId() != null) {
+                stmt.setInt(5, notification.getRelatedId());
+            } else {
+                stmt.setNull(5, Types.INTEGER);
+            }
+
+            stmt.setBoolean(6, notification.isRead());
+
+            // Wypisz gotowe zapytanie
+            System.out.println("SQL Query: " + stmt.toString());
+
+            System.out.println("Executing INSERT...");
+            int rowsInserted = stmt.executeUpdate();
+            System.out.println("Rows inserted: " + rowsInserted);
+
+            if (rowsInserted > 0) {
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        int notificationId = rs.getInt(1);
+                        System.out.println("Generated notification ID: " + notificationId);
+
+
+                        if (additionalData != null && !additionalData.isEmpty()) {
+                            System.out.println("Additional data provided: " + additionalData);
+
+                            storeNotificationData(notificationId, additionalData);
+                        }
+
+                        return notificationId;
+                    }
+                }
+            } else {
+                System.out.println("NO ROWS INSERTED!");
+            }
+        } catch (SQLException e) {
+            System.err.println("SQL EXCEPTION: " + e.getMessage());
+            System.err.println("SQL State: " + e.getSQLState());
+            System.err.println("Error Code: " + e.getErrorCode());
+            e.printStackTrace();
+            throw e;
+        }
+
+        throw new SQLException("Failed to insert notification - no rows affected");
+    }
+
+    //POWIADOMIENIA
+
+    /**
+     * Dodatkowe informacje dla notyfikacji
+     */
+    private void storeNotificationData(int notificationId, Map<String, String> data) throws SQLException {
+        String sql = "INSERT INTO notification_data (notification_id, data_key, data_value) VALUES (?, ?, ?)";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            for (Map.Entry<String, String> entry : data.entrySet()) {
+                stmt.setInt(1, notificationId);
+                stmt.setString(2, entry.getKey());
+                stmt.setString(3, entry.getValue());
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+        }
+    }
+
+    /**
+     * Zwraca iczbe nieprzeczytanych, do aktualizacji czerwonego koleczka
+     */
+    public int getUnreadNotificationCount(int userId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = FALSE";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return 0;
+    }
+
+    public Integer getUserIdByUsername(String username) throws SQLException {
+        String sql = "SELECT account_id FROM user_account WHERE username = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("account_id");
+                } else {
+                    throw new SQLException("User not found: " + username);
+                }
+            }
+        }
+    }
+
+    /**
+     * Wszystkie powiadomieni uzytkownika
+     */
+    public List<INotification> getUserNotifications(int userId, boolean unreadOnly) throws SQLException {
+        String sql = """
+    SELECT n.*, 
+           nd1.data_value as book_id_value
+    FROM notifications n
+    LEFT JOIN notification_data nd1 ON n.notification_id = nd1.notification_id AND nd1.data_key = 'book_id'
+    WHERE n.user_id = ?
+    """;
+
+        if (unreadOnly) {
+            sql += " AND n.is_read = FALSE";
+        }
+        sql += " ORDER BY n.created_at DESC LIMIT 50";
+
+        List<INotification> notifications = new ArrayList<>();
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    INotification notification = buildNotificationFromResultSet(rs);
+                    if (notification != null) {
+                        notifications.add(notification);
+                    }
+                }
+            }
+        }
+
+        return notifications;
+    }
+
+    /**
+     * Tworzenie odpowiedniego typu powiadomienia - SIMPLIFIED VERSION
+     */
+    private INotification buildNotificationFromResultSet(ResultSet rs) throws SQLException {
+        System.out.println("=== BUILDING NOTIFICATION FROM RESULT SET ===");
+
+        String type = rs.getString("notification_type");
+        System.out.println("📋 Notification type: " + type);
+
+        // Debug wszystkich pól z result set
+        System.out.println("🔍 Result Set data:");
+        System.out.println("   notification_id: " + rs.getInt("notification_id"));
+        System.out.println("   user_id: " + rs.getInt("user_id"));
+        System.out.println("   title: " + rs.getString("title"));
+        System.out.println("   message: " + rs.getString("message"));
+        System.out.println("   related_id: " + rs.getInt("related_id"));
+        System.out.println("   is_read: " + rs.getBoolean("is_read"));
+        System.out.println("   created_at: " + rs.getTimestamp("created_at"));
+
+        INotification notification;
+
+        switch (type) {
+            case "COMMENT_REPLY":
+                System.out.println("🏗️ Creating CommentReplyNotification");
+                CommentReplyNotification commentNotif = new CommentReplyNotification();
+
+                // Pobierz podstawowe dane z bazy danych
+                String title = rs.getString("title");
+                String message = rs.getString("message");
+                System.out.println("📝 Title from DB: " + title);
+                System.out.println("💬 Message from DB: " + message);
+
+                // Ustaw title i message z bazy danych używając setterów
+                commentNotif.setTitle(title);
+                commentNotif.setMessage(message);
+
+                // Parse commenter name from message
+                if (message != null && message.contains(" replied to your review of")) {
+                    String commenterName = message.substring(0, message.indexOf(" replied to"));
+                    System.out.println("👤 Parsed commenter name: " + commenterName);
+                    commentNotif.setCommenterName(commenterName);
+                }
+
+                // Parse book title from message
+                if (message != null && message.contains("\"") && message.lastIndexOf("\"") > message.indexOf("\"")) {
+                    int start = message.indexOf("\"") + 1;
+                    int end = message.lastIndexOf("\"");
+                    String bookTitle = message.substring(start, end);
+                    System.out.println("📚 Parsed book title: " + bookTitle);
+                    commentNotif.setBookTitle(bookTitle);
+                }
+
+                int reviewId = rs.getInt("related_id");
+                System.out.println("📄 Review ID: " + reviewId);
+                commentNotif.setReviewId(reviewId);
+
+                // Set book_id if available from additional data
+                String bookIdValue = rs.getString("book_id_value");
+                System.out.println("🔗 Book ID value: " + bookIdValue);
+                if (bookIdValue != null) {
+                    try {
+                        int bookId = Integer.parseInt(bookIdValue);
+                        commentNotif.setBookId(bookId);
+                        System.out.println("✅ Set book ID: " + bookId);
+                    } catch (NumberFormatException e) {
+                        System.err.println("❌ Invalid book ID format: " + bookIdValue);
+                    }
+                }
+
+                notification = commentNotif;
+                break;
+
+            case "READING_REMINDER":
+                System.out.println("🏗️ Creating ReadingReminderNotification");
+                ReadingReminderNotification reminderNotif = new ReadingReminderNotification();
+
+                // Ustaw title i message z bazy danych używając setterów
+                reminderNotif.setTitle(rs.getString("title"));
+                reminderNotif.setMessage(rs.getString("message"));
+
+                String bookIdValueReminder = rs.getString("book_id_value");
+                if (bookIdValueReminder != null) {
+                    try {
+                        int bookIdReminder = Integer.parseInt(bookIdValueReminder);
+                        reminderNotif.setBookId(bookIdReminder);
+                        reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.SPECIFIC_BOOK);
+                        System.out.println("✅ Set reminder for specific book ID: " + bookIdReminder);
+                    } catch (NumberFormatException e) {
+                        reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.GENERAL_READING);
+                        System.out.println("✅ Set general reading reminder");
+                    }
+                } else {
+                    reminderNotif.setReminderType(ReadingReminderNotification.ReminderType.GENERAL_READING);
+                    System.out.println("✅ Set general reading reminder (no book_id)");
+                }
+                notification = reminderNotif;
+                break;
+
+            default:
+                System.err.println("❌ Unknown notification type: " + type);
+                return null;
+        }
+
+        // Ustaw podstawowe pola
+        notification.setNotificationId(rs.getInt("notification_id"));
+        notification.setUserId(rs.getInt("user_id"));
+        notification.setRead(rs.getBoolean("is_read"));
+        notification.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+
+        System.out.println("✅ Successfully built notification:");
+        System.out.println("   Final title: " + notification.getTitle());
+        System.out.println("   Final message: " + notification.getMessage());
+        System.out.println("   Final icon: " + notification.getIcon());
+        System.out.println("   Final type: " + notification.getNotificationType());
+
+        return notification;
+    }
+    /**
+     * Oznaczenie powiadomienia jako przeczytanego
+     */
+    public void markNotificationsAsRead(int userId, List<Integer> notificationIds) throws SQLException {
+        if (notificationIds.isEmpty()) return;
+
+        String sql = "UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND notification_id IN (" +
+                String.join(",", Collections.nCopies(notificationIds.size(), "?")) + ")";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            int index = 2;
+            for (Integer id : notificationIds) {
+                stmt.setInt(index++, id);
+            }
+            stmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Wyczyszczenie powiadomien z tabeli
+     */
+    public void clearUserNotifications(int userId) throws SQLException {
+        String sql = "DELETE FROM notifications WHERE user_id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Tworzenie powiadomienia przy dodaniu komentarza
+     */
+    public void addCommentWithNotification(String username, int reviewId, String content) throws SQLException {
+        //username = nazwa komentujacego
+        addComment(username, reviewId, content);
+        System.out.println("Dodawanie komentarza");
+
+        String sql = """
+    SELECT r.user_id, b.title, b.book_id
+    FROM reviews r
+    INNER JOIN books b ON r.book_id = b.book_id
+    WHERE r.review_id = ?
+    """;
+        System.out.println("Proba wziecia info do notifi");
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            System.out.println("Wykonywanie selecta przy wstawianiu komentarza");
+            stmt.setInt(1, reviewId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    int reviewOwnerId = rs.getInt("user_id");
+                    String bookTitle = rs.getString("title");
+                    int bookId = rs.getInt("book_id");
+
+                    // Sprawdź czy komentujący to nie autor recenzji
+                    if (reviewOwnerId != getUserIdByUsername(username)) {
+                        System.out.println("Komentarz nie jest od autora recenzji - tworzenie notifikacji");
+                        CommentReplyNotification notification = NotificationCreate.createCommentReply(
+                                reviewOwnerId, bookTitle, username, reviewId, bookId
+                        );
+
+                        // FIXED: Only add book_id, remove duplicate data
+                        Map<String, String> additionalData = new HashMap<>();
+                        additionalData.put("book_id", String.valueOf(bookId));
+
+                        System.out.println("Dodawanie notification");
+                        addNotification(notification, additionalData);
+                    } else {
+                        System.out.println("To jest komentarz autora do własnej recenzji - brak notifikacji");
+                    }
+                }
+            }
+        }
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.program.bookie.client;
 
 import com.program.bookie.models.*;
+import javafx.application.Platform;
 import javafx.scene.image.Image;
 
 import java.io.ByteArrayInputStream;
@@ -8,7 +9,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 public class Client {
     private static Client instance;
@@ -19,6 +20,8 @@ public class Client {
     private final int SERVER_PORT = 999;
     private boolean connected = false;
 
+    //operacje w tle
+    private final ExecutorService executorService = Executors.newFixedThreadPool(4);
     // Cache dla obrazów
     private final ConcurrentHashMap<String, Image> imageCache = new ConcurrentHashMap<>();
     private static final int MAX_CACHE_SIZE = 100;
@@ -73,6 +76,15 @@ public class Client {
 
     public void disconnect() {
         try {
+            //WAZNE: Zamkniecie puli watkow
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(3, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+            }
             if (connected && socket != null && !socket.isClosed()) {
                 try {
                     Request disconnectRequest = new Request(RequestType.DISCONNECT, null);
@@ -96,6 +108,7 @@ public class Client {
             output = null;
             input = null;
         }
+
     }
 
     /**
@@ -155,6 +168,61 @@ public class Client {
         }
 
         return null;
+    }
+    // Prosta metoda asynchroniczna - tylko podstawowe callbacki
+    public void executeAsync(Request request, Runnable onSuccess, Runnable onError) {
+        Callable<Response> callable = () -> {
+            synchronized (this) {
+                return sendRequest(request);
+            }
+        };
+
+        Future<Response> future = executorService.submit(callable);
+
+        executorService.submit(() -> {
+            try {
+                Response response = future.get();
+                Platform.runLater(() -> {
+                    if (response.getType() == ResponseType.SUCCESS) {
+                        if (onSuccess != null) onSuccess.run();
+                    } else {
+                        if (onError != null) onError.run();
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    if (onError != null) onError.run();
+                });
+            }
+        });
+    }
+
+    // Metoda gdy potrzebujesz dostępu do Response
+    public void executeAsyncWithData(Request request, ResponseHandler handler) {
+        Callable<Response> callable = () -> {
+            synchronized (this) {
+                return sendRequest(request);
+            }
+        };
+
+        Future<Response> future = executorService.submit(callable);
+
+        executorService.submit(() -> {
+            try {
+                Response response = future.get();
+                Platform.runLater(() -> handler.handle(response));
+            } catch (Exception e) {
+                Platform.runLater(() -> handler.handleError(e));
+            }
+        });
+    }
+
+    // Prosty interface - tylko jeden
+    public interface ResponseHandler {
+        void handle(Response response);
+        default void handleError(Exception e) {
+            System.err.println("Request error: " + e.getMessage());
+        }
     }
 
     /**

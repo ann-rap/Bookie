@@ -3,12 +3,14 @@ package com.program.bookie.models;
 import java.io.Serializable;
 
 public class Book implements Serializable {
+    private static final long serialVersionUID = 1L;
     private int bookId;
     private String title;
     private String author;
     private String coverImagePath;
     private double averageRating;
     private int ratingCount;
+    private int reviewCount;
     private String description;
     private String genre;
     private int publicationYear;
@@ -53,7 +55,10 @@ public class Book implements Serializable {
     public String getDescription() { return description; }
     public String getGenre() { return genre; }
     public int getPublicationYear() { return publicationYear; }
+
     public int getPages() { return pages; }
+    public int getReviewCount() { return reviewCount; }
+    public void setReviewCount(int reviewCount) { this.reviewCount = reviewCount; }
 
     // Setters
     public void setBookId(int bookId) { this.bookId = bookId; }

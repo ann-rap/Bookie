@@ -251,12 +251,13 @@ public class StatisticsController implements Initializable {
             if (insights.getMostPopularBook() != null) {
                 Book book = insights.getMostPopularBook();
                 String displayText = book.getTitle() + " by " + book.getAuthor();
-                if (mostPopularBookLabel != null) {
-                    mostPopularBookLabel.setText(displayText);
-                }
-                if (mostPopularCountLabel != null) {
-                    mostPopularCountLabel.setText(book.getRatingCount() + " reviews");
-                }
+
+                if (mostPopularBookLabel != null && mostPopularCountLabel!=null)
+                {
+
+                mostPopularBookLabel.setText(displayText);
+                mostPopularCountLabel.setText(book.getReviewCount() + " reviews");
+
             } else {
                 if (mostPopularBookLabel != null) mostPopularBookLabel.setText("No popular books found");
                 if (mostPopularCountLabel != null) mostPopularCountLabel.setText("0 reviews");

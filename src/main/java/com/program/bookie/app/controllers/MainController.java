@@ -1,10 +1,14 @@
 package com.program.bookie.app.controllers;
 
 import com.program.bookie.client.Client;
+import com.program.bookie.client.NotificationService;
 import com.program.bookie.models.*;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
+import javafx.beans.binding.Bindings;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -15,10 +19,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -32,6 +33,9 @@ import java.util.*;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.stream.Collectors;
+import javafx.util.Duration;
+
 
 
 public class MainController implements Initializable {
@@ -88,7 +92,15 @@ public class MainController implements Initializable {
     @FXML
     private VBox reviewsContainer;
 
+    @FXML private Button bellButton;
+    @FXML private StackPane notificationBadge;
+    @FXML private Label countNLabel;
+    @FXML private VBox notificationDropdown;
+    @FXML private VBox notificationsList;
+
     private boolean isUserMenuVisible = false;
+    private NotificationService notificationService;
+    private boolean isNotificationMenuVisible = false;
 
     private Client client = Client.getInstance();
     private User currentUser;
@@ -153,14 +165,34 @@ public class MainController implements Initializable {
             welcomeLabel.setText("Welcome " + user.getUsername() + "!");
         }
         loadRandomQuote();
+        if (notificationService != null) {
+            notificationService.start(user.getUsername());
+            System.out.println("Notification service started for: " + user.getUsername());
+        }
     }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         client.clearImageCache();
+        notificationService = NotificationService.getInstance();
+        System.out.println("NotificationService started");
         setHover(homeButton);
         setHover(statisticsButton);
         setHover(shelfButton);
+
+        System.out.println("bellButton: " + bellButton);
+        System.out.println("notificationBadge: " + notificationBadge);
+        System.out.println("notificationCountLabel: " + countNLabel);
+
+        // Set up bell click handler
+        if (bellButton != null) {
+            bellButton.setOnAction(event -> {
+                System.out.println("Bell button clicked!");
+                toggleNotificationMenu();
+            });
+        } else {
+            System.err.println("bellButton is NULL!");
+        }
 
         /// shutdownHook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -172,8 +204,15 @@ public class MainController implements Initializable {
         Platform.runLater(() -> {
             if (userButton.getScene() != null) {
                 userButton.getScene().setOnMouseClicked(event -> {
-                    if (!isClickOnUserMenu(event.getTarget()) && isUserMenuVisible) {
+                    boolean clickedOnUser = isClickOnUserMenu(event.getTarget());
+                    boolean clickedOnNotification = isClickOnNotificationMenu(event.getTarget());
+
+                    if (!clickedOnUser && isUserMenuVisible) {
                         hideUserMenu();
+                    }
+
+                    if (!clickedOnNotification && isNotificationMenuVisible) {
+                        hideNotificationMenu();
                     }
                 });
             }
@@ -203,10 +242,49 @@ public class MainController implements Initializable {
         }
         setupScrollListeners();
         setupMouseWheelScrolling();
+        if (notificationDropdown != null) {
+            notificationDropdown.setVisible(false);
+
+        }
+
+        if (notificationService != null) {
+            notificationService.getNotifications().addListener((ListChangeListener<INotification>) change -> {
+                while (change.next()) {
+                    if (change.wasAdded() || change.wasReplaced()) {
+                        // Lista się zmieniła - odśwież wyświetlanie jeśli menu jest otwarte
+                        if (isNotificationMenuVisible) {
+                            Platform.runLater(this::displayNotifications);
+                        }
+                    }
+                }
+            });
+
+        }
+        setupNotificationBindings();
+
+
     }
+    private boolean isClickOnNotificationMenu(Object target) {
+        if (target instanceof javafx.scene.Node) {
+            javafx.scene.Node node = (javafx.scene.Node) target;
+
+            if (node == bellButton || isChildOf(node, bellButton)) {
+                return true;
+            }
+
+            if (node == notificationDropdown || isChildOf(node, notificationDropdown)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     //MENU
     public void closeButtonOnAction(ActionEvent actionEvent) {
+        if (notificationService != null) {
+            notificationService.stop();
+        }
         if (client != null) {
             System.out.println("Disconnecting client...");
             client.clearImageCache();
@@ -230,7 +308,10 @@ public class MainController implements Initializable {
         isUserMenuVisible = !isUserMenuVisible;
         userDropdown.setVisible(isUserMenuVisible);
 
+
+
         if (isUserMenuVisible && currentUser != null) {
+            hideNotificationMenu();
             userGreeting.setText("Hi " + currentUser.getUsername() + "!");
         }
     }
@@ -242,6 +323,9 @@ public class MainController implements Initializable {
 
     public void onLogoutClicked(ActionEvent event) {
         try {
+            if (notificationService != null) {
+                notificationService.stop();
+            }
             if (client != null) {
                 System.out.println("Logging out user: " + currentUser.getUsername());
                 client.clearImageCache();
@@ -264,6 +348,20 @@ public class MainController implements Initializable {
         } catch (Exception e) {
             System.err.println("Error during logout: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void onClearNotificationsClicked() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Clear Notifications");
+        alert.setHeaderText(null);
+        alert.setContentText("Are you sure you want to clear all notifications?");
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            notificationService.clearAllNotifications();
+            hideNotificationMenu();
         }
     }
 
@@ -402,20 +500,26 @@ public class MainController implements Initializable {
 
     //HOMEPAGE
     public void loadTopRatedBooks() {
-        try {
-            Request request = new Request(RequestType.GET_TOP_BOOKS, 4);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.GET_TOP_BOOKS, 4);
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                @SuppressWarnings("unchecked")
-                List<Book> topBooks = (List<Book>) response.getData();
-                displayBooks(topBooks);
-            } else {
-                System.err.println("Błąd pobierania książek: " + response.getData());
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                if (response.getType() == ResponseType.SUCCESS) {
+                    @SuppressWarnings("unchecked")
+                    List<Book> topBooks = (List<Book>) response.getData();
+                    displayBooks(topBooks);
+                    System.out.println("Top books loaded successfully!");
+                } else {
+                    System.err.println("Błąd pobierania książek: " + response.getData());
+                }
             }
-        } catch (Exception e) {
-            System.err.println("Błąd połączenia: " + e.getMessage());
-        }
+
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Błąd połączenia: " + e.getMessage());
+            }
+        });
     }
 
     private void displayBooks(List<Book> books) {
@@ -530,36 +634,114 @@ public class MainController implements Initializable {
         }
     }
 
+    private void showSearchResultsAsync(List<Book> books) {
+        // Wyczyść loading indicator
+        searchBox.getChildren().clear();
+
+        if (books.isEmpty()) {
+            Label noResultsLabel = new Label("No books found. Try a different search term.");
+            noResultsLabel.setStyle("-fx-font-size: 14px; -fx-padding: 20px; -fx-text-fill: #666;");
+            searchBox.getChildren().add(noResultsLabel);
+            return;
+        }
+
+        // Preload obrazów w tle
+        String[] imagePaths = books.stream()
+                .map(Book::getCoverImagePath)
+                .filter(path -> path != null && !path.isEmpty())
+                .toArray(String[]::new);
+
+        if (imagePaths.length > 0) {
+            client.preloadImages(imagePaths);
+        }
+
+        // Dodawaj wyniki jeden po drugim z małym opóźnieniem
+        addSearchResultsProgressive(books, 0);
+    }
+
+    /**
+     * Progresywne dodawanie wyników wyszukiwania
+     */
+    private void addSearchResultsProgressive(List<Book> books, int currentIndex) {
+        if (currentIndex >= books.size()) {
+            return; // Zakończ gdy wszystkie dodane
+        }
+
+        Book book = books.get(currentIndex);
+
+        // Dodaj pojedynczy wynik
+        Platform.runLater(() -> {
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/program/bookie/searchBokk.fxml"));
+                HBox searchResult = loader.load();
+
+                SearchController controller = loader.getController();
+
+                // WAŻNE: Ustaw podstawowe dane synchronicznie
+                controller.setBasicData(book, currentUser.getUsername());
+                controller.setMainController(this);
+
+                searchBox.getChildren().add(searchResult);
+
+                // Załaduj dodatkowe dane asynchronicznie
+                controller.loadAdditionalDataAsync();
+
+            } catch (IOException e) {
+                System.err.println("Error loading search result for book: " + book.getTitle());
+                e.printStackTrace();
+            }
+
+            // Zaplanuj dodanie kolejnego wyniku po krótkim opóźnieniu
+            if (currentIndex + 1 < books.size()) {
+                Timeline timeline = new Timeline(new KeyFrame(
+                        Duration.millis(50), // 50ms opóźnienia między elementami
+                        e -> addSearchResultsProgressive(books, currentIndex + 1)
+                ));
+                timeline.play();
+            }
+        });
+    }
+
     public void onSearchClicked() {
         hideUserMenu();
+        hideNotificationMenu();
 
         String searchTerm = searchField.getText();
         if (searchTerm == null || searchTerm.isBlank()) return;
 
-        try {
-            Request request = new Request(RequestType.SEARCH_BOOK, searchTerm);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.SEARCH_BOOK, searchTerm);
 
-            if (response.getType() == ResponseType.SUCCESS) {
-                List<Book> results = (List<Book>) response.getData();
 
-                showSearchResults(results);
-                loadRandomQuote();
-                searchPane.setVisible(true);
-                homePane.setVisible(false);
-                bookDetailsPane.setVisible(false);
-                statisticsPane.setVisible(false);
-                shelvesPane.setVisible(false);
-            } else {
-                System.err.println("Search failed: " + response.getData());
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                if (response.getType() == ResponseType.SUCCESS) {
+                    @SuppressWarnings("unchecked")
+                    List<Book> results = (List<Book>) response.getData();
+
+                    showSearchResults(results);
+                    loadRandomQuote();
+                    searchPane.setVisible(true);
+                    homePane.setVisible(false);
+                    bookDetailsPane.setVisible(false);
+                    statisticsPane.setVisible(false);
+
+                    System.out.println("Search completed for: " + searchTerm);
+                } else {
+                    System.err.println("Search failed: " + response.getData());
+                }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Search error: " + e.getMessage());
+            }
+        });
     }
 
     public void onHomeClicked() {
         hideUserMenu();
+        hideNotificationMenu();
         clearSearchField();
 
         loadTopRatedBooks();
@@ -574,6 +756,7 @@ public class MainController implements Initializable {
     //BOOK DETAILS
     public void showBookDetails(Book book) {
         hideUserMenu();
+        hideNotificationMenu();
         clearSearchField();
 
         if (book == null) return;
@@ -603,7 +786,7 @@ public class MainController implements Initializable {
         }
 
         if (detailsReviews != null) {
-            detailsReviews.setText(book.getRatingCount() + " reviews");
+            detailsReviews.setText(book.getReviewCount() + " reviews");
         }
 
         if (detailsDescription != null) {
@@ -724,7 +907,11 @@ public class MainController implements Initializable {
             if (response.getType() == ResponseType.SUCCESS) {
                 @SuppressWarnings("unchecked")
                 List<Review> reviews = (List<Review>) response.getData();
-                displayReviews(reviews);
+                List<Review> reviewsWithContent = reviews.stream()
+                        .filter(review -> review.getReviewText() != null &&
+                                !review.getReviewText().trim().isEmpty())
+                        .collect(Collectors.toList());
+                displayReviews(reviewsWithContent);
             } else {
                 System.err.println("Error loading reviews: " + response.getData());
             }
@@ -784,38 +971,45 @@ public class MainController implements Initializable {
     private void loadBookDetailsReadingStatus() {
         if (currentBookDetails == null || currentUser == null) return;
 
-        try {
-            Map<String, Object> data = new HashMap<>();
-            data.put("username", currentUser.getUsername());
-            data.put("bookId", currentBookDetails.getBookId());
+        Map<String, Object> data = new HashMap<>();
+        data.put("username", currentUser.getUsername());
+        data.put("bookId", currentBookDetails.getBookId());
 
-            Request request = new Request(RequestType.GET_READING_STATUS, data);
-            Response response = client.sendRequest(request);
+        Request request = new Request(RequestType.GET_READING_STATUS, data);
 
-            isUpdatingStatus = true;
-
-            if (response.getType() == ResponseType.SUCCESS) {
-                String status = (String) response.getData();
-                if (status == null || status.trim().isEmpty()) {
-                    detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
-                    setBookDetailsComboBoxStyle(true);
-                } else {
-                    detailsStatusCombo.getSelectionModel().select(status);
-                    setBookDetailsComboBoxStyle(false);
+        client.executeAsyncWithData(request, new Client.ResponseHandler() {
+            @Override
+            public void handle(Response response) {
+                isUpdatingStatus = true;
+                try {
+                    if (response.getType() == ResponseType.SUCCESS) {
+                        String status = (String) response.getData();
+                        if (status == null || status.trim().isEmpty()) {
+                            detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+                            setBookDetailsComboBoxStyle(true);
+                        } else {
+                            detailsStatusCombo.getSelectionModel().select(status);
+                            setBookDetailsComboBoxStyle(false);
+                        }
+                    } else {
+                        System.err.println("Error loading reading status: " + response.getData());
+                        detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+                        setBookDetailsComboBoxStyle(true);
+                    }
+                } finally {
+                    isUpdatingStatus = false;
                 }
-            } else {
-                System.err.println("Error loading reading status: " + response.getData());
-                detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
-                setBookDetailsComboBoxStyle(true);
             }
 
-        } catch (Exception e) {
-            System.err.println("Exception loading reading status: " + e.getMessage());
-            detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
-            setBookDetailsComboBoxStyle(true);
-        } finally {
-            isUpdatingStatus = false;
-        }
+            @Override
+            public void handleError(Exception e) {
+                System.err.println("Exception loading reading status: " + e.getMessage());
+                isUpdatingStatus = true;
+                detailsStatusCombo.getSelectionModel().select(WANT_TO_READ);
+                setBookDetailsComboBoxStyle(true);
+                isUpdatingStatus = false;
+            }
+        });
     }
 
     private void updateBookDetailsReadingStatus(String selectedStatus) {
@@ -1039,6 +1233,7 @@ public class MainController implements Initializable {
             reviewStage.setOnHidden(e -> {
                 // Odśwież rating status label
                 loadBookDetailsUserRating();
+                loadBookReviews();
             });
 
             reviewStage.show();
@@ -1057,6 +1252,7 @@ public class MainController implements Initializable {
 
     public void onStatisticsClicked() {
         hideUserMenu();
+        hideNotificationMenu();
         clearSearchField();
 
         loadStatisticsPane();
@@ -1121,6 +1317,7 @@ public class MainController implements Initializable {
 
     public void onShelvesClicked() {
         hideUserMenu();
+        hideNotificationMenu();
         clearSearchField();
 
         loadRandomQuote();
@@ -1473,3 +1670,201 @@ public class MainController implements Initializable {
 }
 
 
+    //NOTIFICATIONS
+    private void updateNotificationBadge(int count) {
+        Platform.runLater(() -> {
+            if (notificationBadge != null && countNLabel != null) {
+                if (count > 0) {
+                    notificationBadge.setVisible(true);
+                    countNLabel.setText(count > 9 ? "9+" : String.valueOf(count));
+                } else {
+                    notificationBadge.setVisible(false);
+                }
+            }
+        });
+    }
+    @FXML
+    private void toggleNotificationMenu() {
+        isNotificationMenuVisible = !isNotificationMenuVisible;
+
+        if (notificationDropdown != null) {
+            notificationDropdown.setVisible(isNotificationMenuVisible);
+
+            if (isNotificationMenuVisible) {
+                hideUserMenu();
+
+
+                notificationService.loadNotifications(false);
+                displayNotifications();
+
+
+                Timeline timeline = new Timeline(new KeyFrame(
+                        Duration.seconds(2),
+                        e -> markVisibleNotificationsAsRead()
+                ));
+                timeline.play();
+            }
+        }
+    }
+    private void displayNotifications() {
+
+        if (notificationsList == null) {
+            System.err.println("notificationList is null!");
+            return;
+        }
+
+        notificationsList.getChildren().clear();
+
+        ObservableList<INotification> notifications = notificationService.getNotifications();
+
+        if (notifications.isEmpty()) {
+            Label emptyLabel = new Label("No notifications");
+            emptyLabel.setStyle("-fx-padding: 20; -fx-text-fill: #888;");
+            notificationsList.getChildren().add(emptyLabel);
+        } else {
+            for (int i = 0; i < notifications.size(); i++) {
+                INotification notification = notifications.get(i);
+
+                try {
+                    VBox notificationItem = createNotificationItem(notification);
+                    notificationsList.getChildren().add(notificationItem);
+                    System.out.println("Added notification item " + i + " to list");
+                } catch (Exception e) {
+                    System.err.println("Error creating notification item " + i + ": " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        System.out.println("📊 Final notificationsList children count: " + notificationsList.getChildren().size());
+    }
+
+    // Stworz powiadomienie
+    private VBox createNotificationItem(INotification notification) {
+        VBox item = new VBox(5);
+        String backgroundColor = notification.isRead() ? "#f9f9f9" : "#fff";
+        item.setStyle("-fx-padding: 10; -fx-background-color: " + backgroundColor +
+                "; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
+
+        // Header with icon and time
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        String iconText = notification.getIcon();
+        Label iconLabel = new Label(iconText);
+        iconLabel.setStyle("-fx-font-size: 20;");
+
+        String timeText = notification.getFormattedTime();
+        Label timeLabel = new Label(timeText);
+        timeLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 11;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        header.getChildren().addAll(iconLabel, spacer, timeLabel);
+
+        // Title
+        String titleText = notification.getTitle();
+        Label titleLabel = new Label(titleText);
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13;");
+
+        // Message
+        String messageText = notification.getMessage();
+        Label messageLabel = new Label(messageText);
+        messageLabel.setWrapText(true);
+        messageLabel.setStyle("-fx-font-size: 12; -fx-text-fill: #555;");
+
+        item.getChildren().addAll(header, titleLabel, messageLabel);
+
+        // Click handler
+        item.setOnMouseClicked(event -> {
+            System.out.println("Notification clicked: " + notification.getTitle());
+            notification.handleClick(this);
+            hideNotificationMenu();
+        });
+
+        // Hover effect
+        item.setOnMouseEntered(e -> {
+            item.setStyle(item.getStyle() + "; -fx-background-color: #f0f0f0; -fx-cursor: hand;");
+        });
+        item.setOnMouseExited(e -> {
+            item.setStyle(item.getStyle().replace("; -fx-background-color: #f0f0f0; -fx-cursor: hand;", ""));
+        });
+
+        return item;
+    }
+
+    public void openBookFromNotification(int bookId) {
+        System.out.println("Opening book from notification, book ID: " + bookId);
+
+        new Thread(() -> {
+            try {
+                Request request = new Request(RequestType.GET_BOOK_BY_ID, bookId);
+                Response response = client.sendRequest(request);
+
+                if (response.getType() == ResponseType.SUCCESS) {
+                    Book book = (Book) response.getData();
+
+                    Platform.runLater(() -> {
+                        System.out.println("Successfully loaded book: " + book.getTitle());
+                        showBookDetails(book);
+                    });
+
+                } else {
+                    System.err.println(" Error loading book: " + response.getData());
+                    Platform.runLater(() -> {
+                        System.err.println("Failed to load book details");
+                    });
+                }
+
+            } catch (Exception e) {
+                System.err.println("Exception loading book: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+
+    private void markVisibleNotificationsAsRead() {
+        ObservableList<INotification> notifications = notificationService.getNotifications();
+        List<Integer> unreadIds = new ArrayList<>();
+
+        for (INotification notif : notifications) {
+            if (!notif.isRead()) {
+                unreadIds.add(notif.getNotificationId());
+            }
+        }
+
+        if (!unreadIds.isEmpty()) {
+            notificationService.markAsRead(unreadIds);
+        }
+    }
+
+
+    private void hideNotificationMenu() {
+        isNotificationMenuVisible = false;
+        if (notificationDropdown != null) {
+            notificationDropdown.setVisible(false);
+        }
+    }
+
+    private void setupNotificationBindings() {
+        if (notificationService != null && notificationBadge != null && countNLabel != null) {
+            // Bind badge visibility to unread count
+            notificationBadge.visibleProperty().bind(
+                    Bindings.greaterThan(notificationService.unreadCountProperty(), 0)
+            );
+
+            // Bind label text to unread count
+            countNLabel.textProperty().bind(
+                    Bindings.createStringBinding(() -> {
+                        int count = notificationService.getUnreadCount();
+                        return count > 9 ? "9+" : String.valueOf(count);
+                    }, notificationService.unreadCountProperty())
+            );
+
+            System.out.println("Notification bindings established");
+        }
+    }
+
+}
