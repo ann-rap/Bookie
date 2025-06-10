@@ -12,12 +12,15 @@ import java.net.Socket;
 import java.util.concurrent.*;
 
 public class Client {
+
     private static Client instance;
     private Socket socket;
     private ObjectOutputStream output;
     private ObjectInputStream input;
-    private final String SERVER_HOST = "localhost";
-    private final int SERVER_PORT = 999;
+
+    private final ClientConfig config = ClientConfig.getInstance();
+    private final String SERVER_HOST;
+    private final int SERVER_PORT;
     private boolean connected = false;
 
     //operacje w tle
@@ -27,7 +30,8 @@ public class Client {
     private static final int MAX_CACHE_SIZE = 100;
 
     private Client() {
-
+        this.SERVER_HOST = config.getServerHost();
+        this.SERVER_PORT = config.getServerPort();
     }
 
     public static synchronized Client getInstance() {

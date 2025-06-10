@@ -15,9 +15,16 @@ public class Server implements Runnable {
     private static final Logger logger = Logger.getLogger("ServerLogger");
 
     private ServerSocket serverSocket;
-    private final int PORT = 999;
     private volatile boolean running = false;
     private DatabaseConnection dbManager;
+
+    private final ServerConfig config = ServerConfig.getInstance();
+    private final int PORT;
+
+
+    public Server() {
+        this.PORT = config.getServerPort();
+    }
 
     public void run() {
         setupLogger();

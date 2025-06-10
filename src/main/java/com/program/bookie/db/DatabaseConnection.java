@@ -11,21 +11,27 @@ import com.program.bookie.models.UserStatistics;
 import java.util.*;
 
 import com.program.bookie.models.ReadingInsights;
+import com.program.bookie.server.ServerConfig;
 
 
 public class DatabaseConnection {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/bookie";
-    private static final String USERNAME = "root";
-    private static final String PASSWORD = "hasloProgram";
+    private final ServerConfig config = ServerConfig.getInstance();
+    private final String DB_URL;
+    private final String USERNAME;
+    private final String PASSWORD;
 
     private Connection connection;
     private QuoteService quoteService;
 
     public DatabaseConnection() throws SQLException {
+        this.DB_URL = config.getFullDatabaseUrl();
+        this.USERNAME = config.getDatabaseUsername();
+        this.PASSWORD = config.getDatabasePassword();
+
+        this.connection = DriverManager.getConnection(DB_URL, USERNAME, PASSWORD);
         this.connection = DriverManager.getConnection(DB_URL, USERNAME, PASSWORD);
         this.quoteService = new QuoteService();
-        createBookProgressTableIfNotExists();
-        createReadingCountTableIfNotExists();
+
     }
 
     /**
