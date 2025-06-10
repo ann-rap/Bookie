@@ -59,7 +59,7 @@ public class ProgressEditController implements Initializable {
                                 "-fx-background-radius: 10px;"
                 );
 
-                progressSlider.lookup(".thumb").setStyle("-fx-background-color: #658C4C;");
+                progressSlider.lookup(".thumb").setStyle("-fx-background-color: #839174;");
                 progressSlider.lookup(".track").setStyle("-fx-background-color: white;");
             }
         });
