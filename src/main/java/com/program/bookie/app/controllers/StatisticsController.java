@@ -331,13 +331,13 @@ public class StatisticsController implements Initializable {
         int textLength = text.length();
         double fontSize;
 
-        if (textLength <= 60) {
+        if (textLength <= 40) {
             fontSize = 20.0;
-        } else if (textLength <= 100) {
+        } else if (textLength <= 80) {
             fontSize = 19.0;
-        } else if (textLength <= 140) {
+        } else if (textLength <= 120) {
             fontSize = 17.0;
-        } else if (textLength <= 180) {
+        } else if (textLength <= 160) {
             fontSize = 15.0;
         } else {
             fontSize = 13.0;

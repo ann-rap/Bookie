@@ -10,9 +10,9 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="360.0" prefWidth="480.0" style="-fx-background-color: #E9E9E9;" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.ReviewController">
+<AnchorPane prefHeight="360.0" prefWidth="480.0" style="-fx-background-color: #E9E9E9; -fx-border-color: #657a5d; -fx-border-width: 3;" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.ReviewController">
    <children>
-      <AnchorPane prefHeight="359.0" prefWidth="200.0" style="-fx-background-color: #839174;">
+      <AnchorPane prefHeight="359.0" prefWidth="200.0" style="-fx-background-color: #839174; -fx-border-color: #657a5d; -fx-border-width: 3;">
          <children>
             <ImageView fitHeight="202.0" fitWidth="164.0" layoutX="18.0" layoutY="42.0" pickOnBounds="true" preserveRatio="true" />
             <Label fx:id="titleLabel" layoutX="19.0" layoutY="256.0" prefHeight="44.0" prefWidth="164.0" text="Title" textFill="WHITE">
@@ -95,7 +95,7 @@
             <Font size="14.0" />
          </font>
       </Label>
-      <TextArea fx:id="reviewText" layoutX="218.0" layoutY="98.0" prefHeight="190.0" prefWidth="244.0" promptText="What are your thoughts?" />
-      <CheckBox fx:id="spoilerCheckBox" layoutX="218.0" layoutY="288.0" mnemonicParsing="false" text="Spoiler" />
+      <TextArea fx:id="reviewText" layoutX="218.0" layoutY="98.0" prefHeight="150.0" prefWidth="244.0" promptText="What are your thoughts?" wrapText="true"/>
+      <CheckBox fx:id="spoilerCheckBox" layoutX="218.0" layoutY="268.0" mnemonicParsing="false" text="Spoiler" />
    </children>
 </AnchorPane>

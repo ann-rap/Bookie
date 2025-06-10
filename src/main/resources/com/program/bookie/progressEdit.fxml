@@ -11,9 +11,9 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="400.0" prefWidth="480.0" style="-fx-background-color: #E9E9E9;" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.ProgressEditController">
+<AnchorPane prefHeight="400.0" prefWidth="480.0" style="-fx-background-color: #E9E9E9; -fx-border-color: #657a5d; -fx-border-width: 3;" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.program.bookie.app.controllers.ProgressEditController">
     <children>
-        <AnchorPane prefHeight="60.0" prefWidth="480.0" style="-fx-background-color: #839174;">
+        <AnchorPane prefHeight="60.0" prefWidth="480.0" style="-fx-background-color: #839174; -fx-border-color: #657a5d; -fx-border-width: 3;">
             <children>
                 <Label layoutX="20.0" layoutY="15.0" text="Update Reading Progress" textFill="WHITE">
                     <font>
@@ -84,7 +84,7 @@
                                 <Font name="System Bold" size="16.0" />
                             </font>
                         </Button>
-                        <Button fx:id="saveButton" mnemonicParsing="false" onAction="#saveButtonOnAction" prefHeight="40.0" prefWidth="100.0" style="-fx-background-color: #54664D; -fx-font-size: 16;" text="Save" textFill="WHITE">
+                        <Button fx:id="saveButton" mnemonicParsing="false" onAction="#saveButtonOnAction" prefHeight="40.0" prefWidth="100.0" style="-fx-background-color: #839174; -fx-font-size: 16;" text="Save" textFill="WHITE">
                             <font>
                                 <Font name="System Bold" size="16.0" />
                             </font>
