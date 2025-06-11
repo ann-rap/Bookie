@@ -142,10 +142,12 @@ public class ProgressEditController implements Initializable {
         Platform.runLater(() -> {
             if (currentPageField != null) {
                 currentPageField.setText(String.valueOf(book.getCurrentPage()));
+                currentPageField.setStyle("-fx-font-size: 16; -fx-border-color: #658C4C; -fx-border-width: 2px; -fx-border-radius: 5px;");
             }
             if (totalPagesField != null) {
                 totalPagesField.setText(String.valueOf(book.getPages()));
                 totalPagesField.setEditable(false);
+                totalPagesField.setStyle("-fx-opacity: 0.7; -fx-font-size: 16; -fx-border-color: #658C4C; -fx-border-width: 2px; -fx-border-radius: 5px; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
             }
             if (progressSlider != null) {
                 progressSlider.setValue(book.getProgressPercentage());
