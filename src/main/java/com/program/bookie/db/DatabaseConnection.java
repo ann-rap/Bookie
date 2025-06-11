@@ -182,7 +182,7 @@ public class DatabaseConnection {
     public List<Book> searchByTitle(String title) throws SQLException {
 
         String sql= """
-        SELECT b.book_id, b.title, b.author, b.cover_image, 
+        SELECT b.book_id, b.title, b.author, b.cover_image, b.pages,
                COALESCE(AVG(r.rating), 0) as avg_rating,
                COUNT(r.rating) as rating_count,
                COUNT(CASE WHEN r.content IS NOT NULL AND TRIM(r.content) != '' THEN 1 END) as review_count,        
